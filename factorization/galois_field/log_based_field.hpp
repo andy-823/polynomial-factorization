@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2025 Andrei Ishutin
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <array>
@@ -36,23 +58,35 @@ class LogBasedField {
     //   a[0] * alpha^0 + ... + a[k-1] * alpha^{k-1} + alpha^k = 0
     // thus
     //   alpha^k = -a[0] * alpha^0 - ... - a[k-1] * alpha^{k-1}
-    Int generator = 0;
-    Int alpha = 1;
-    for (uint32_t i = 0; i < kFieldPower; ++i) {
-      generator += alpha * kFieldGenerator[i];
-      alpha *= kFieldBase;
-    }
-    generator = Negative(generator);
-
+    Int alpha = BinPow(kFieldBase, kFieldPower - 1);
     Int polynom = 1;
-    for (Int power = 0; power < kFieldSize; ++power) {
+    for (Int power = 0; power + 1 < kFieldSize; ++power) {
       log_to_poly_[power] = polynom;
       poly_to_log_[polynom] = power;
-
-      polynom *= kFieldBase;
-      if (polynom >= alpha) {
-        Int overflow = polynom / alpha;
-        polynom = Add(polynom, overflow * generator);
+      // Now we want to multiply polynom by alpha
+      // Consider
+      //   polynom = c * alpha^{k - 1} + p(alpha), deg(p(alpha)) < k - 1
+      // Then
+      //   polynom * alpha = c * alpha^{k} + alpha * p(alpha)
+      Int overflow = polynom / alpha;
+      // Remove c * alpha^{k - 1} at the beginning
+      // and multiply remaining part by alpha
+      polynom = (polynom - overflow * alpha) * kFieldBase;
+      if (overflow > 0) {
+        // now we want to add
+        //   c * alpha^{k}, here c != 0
+        // which is equal to
+        //   c * (-a[0] * alpha^0 + ... + -a[k - 1] * alpha^{k - 1})
+        // or simply
+        //  -c * (a[0] * alpha^0 + ... + a[k - 1] * alpha^{k - 1})
+        overflow = Negative(overflow);
+        Int adder = 0;
+        for (uint32_t i = kFieldPower - 1; i > 0; --i) {
+          adder += kFieldGenerator[i] * overflow % kFieldBase;
+          adder *= kFieldBase;
+        }
+        adder += kFieldGenerator[0] * overflow % kFieldBase;
+        polynom = Add(polynom, adder);
       }
     }
   }
@@ -100,6 +134,7 @@ class LogBasedField {
     return log_to_poly_[(first + second) % (kFieldSize - 1)];
   }
 
+  //! Returns field element that equal given**power
   template <typename Power>
   constexpr Int Pow(Int base, Power power) const {
     if (base == 0) {
@@ -109,6 +144,7 @@ class LogBasedField {
     return log_to_poly_[power * base % (kFieldSize - 1)];
   }
 
+  //! Returns field element b that ab = 1
   constexpr Int Inverse(Int value) const {
     if (value == 1) {
       return value;
@@ -117,6 +153,7 @@ class LogBasedField {
     return log_to_poly_[kFieldSize - 1 - value];
   }
 
+  //! Returns power that alpha^power = value
   constexpr Int Log(Int value) const {
     return poly_to_log_[value];
   }
@@ -136,27 +173,29 @@ template <uint32_t kFieldPower,
           std::integral Int>
 class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
  public:
+  using Value = Int;
+
+ public:
   constexpr LogBasedField() {
     // these 2 forms are impossible
     poly_to_log_[0] = kFieldSize - 1;
     log_to_poly_[kFieldSize - 1] = 0;
     // Simple version of above
-    Int generator = 0;
+    Int generator = kFieldGenerator[0];
     Int alpha = 1;
-    for (uint32_t i = 0; i < kFieldPower; ++i) {
-      generator ^= alpha * kFieldGenerator[i];
+    for (uint32_t i = 1; i < kFieldPower; ++i) {
       alpha <<= 1;
+      generator ^= alpha * kFieldGenerator[i];
     }
 
     Int polynom = 1;
-    for (Int power = 0; power < kFieldSize; ++power) {
+    for (Int power = 0; power + 1 < kFieldSize; ++power) {
       log_to_poly_[power] = polynom;
       poly_to_log_[polynom] = power;
 
-      polynom <<= 1;
-      if (polynom >= alpha) {
-        polynom = Add(polynom, generator);
-      }
+      polynom = polynom >= alpha 
+                  ? Add((polynom - alpha) << 1, generator)
+                  : polynom << 1;
     }
   }
 
