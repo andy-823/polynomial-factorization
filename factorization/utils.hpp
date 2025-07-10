@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-namespace factorization::internal {
+namespace factorization::utils {
 
 template <typename Value, typename Power = Value>
 constexpr Value BinPow(Value base, Power power) {
@@ -35,4 +35,4 @@ constexpr Value BinPow(Value base, Power power) {
   return result;
 }
 
-} // namespace factorization::internal
+} // namespace factorization::utils

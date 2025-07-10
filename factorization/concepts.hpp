@@ -24,7 +24,7 @@
 
 #include <concepts>
 
-namespace factorization::internal {
+namespace factorization::concepts {
 
 template <typename Field>
 concept GaloisField = requires (Field field, Field::Value value) {
@@ -35,4 +35,21 @@ concept GaloisField = requires (Field field, Field::Value value) {
   { field.Pow(value, 0) } -> std::same_as<typename Field::Value>;
 };
 
-}  // namespace factorization::internal
+template <typename Element>
+concept GaloisFieldElement = requires (Element element) {
+  Element::GaloisField;
+
+  { element += element } -> std::same_as<Element>;
+  { element -= element } -> std::same_as<Element>;
+  { element *= element } -> std::same_as<Element>;
+  { element /= element } -> std::same_as<Element>;
+
+  { element + element } -> std::same_as<Element>;
+  { element - element } -> std::same_as<Element>;
+  { element * element } -> std::same_as<Element>;
+  { element / element } -> std::same_as<Element>;
+
+  { -element } -> std::same_as<Element>;
+};
+
+}  // namespace factorization::concepts

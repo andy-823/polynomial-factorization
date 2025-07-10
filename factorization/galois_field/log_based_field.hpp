@@ -27,7 +27,7 @@
 
 #include <factorization/utils.hpp>
 
-namespace factorization::internal {
+namespace factorization::galois_field {
 
 /*! \brief Field implementation based on using logarithm tables.
  *
@@ -58,7 +58,7 @@ class LogBasedField {
     //   a[0] * alpha^0 + ... + a[k-1] * alpha^{k-1} + alpha^k = 0
     // thus
     //   alpha^k = -a[0] * alpha^0 - ... - a[k-1] * alpha^{k-1}
-    Int alpha = BinPow(kFieldBase, kFieldPower - 1);
+    Int alpha = utils::BinPow(kFieldBase, kFieldPower - 1);
     Int polynom = 1;
     for (Int power = 0; power + 1 < kFieldSize; ++power) {
       log_to_poly_[power] = polynom;
@@ -159,7 +159,7 @@ class LogBasedField {
   }
 
  private:
-  constexpr static uint32_t kFieldSize = BinPow(kFieldBase, kFieldPower);
+  constexpr static uint32_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
   // can it be done constexpr since we have constexpr constructor?
   std::array<Int, kFieldSize> log_to_poly_;
   std::array<Int, kFieldSize> poly_to_log_;
@@ -244,4 +244,4 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
   std::array<Int, kFieldSize> poly_to_log_;
 };
 
-}  // namespace factorization::internal
+}  // namespace factorization::galois_field
