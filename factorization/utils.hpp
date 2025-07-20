@@ -20,7 +20,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#pragma  once
+
+#include <utility>
+
 namespace factorization::utils {
+
+template <class Iterator>
+class IteratorRange {
+ public:
+  IteratorRange(Iterator begin, Iterator end) : begin_(begin), end_(end) {
+  }
+
+  Iterator begin() const {  // NOLINT
+    return begin_;
+  }
+  Iterator end() const {  // NOLINT
+    return end_;
+  }
+
+ private:
+  Iterator begin_;
+  Iterator end_;
+};
 
 template <typename Value, typename Power = Value>
 constexpr Value BinPow(Value base, Power power) {
@@ -33,6 +55,15 @@ constexpr Value BinPow(Value base, Power power) {
     power /= 2;
   }
   return result;
+}
+
+template <typename Value>
+constexpr Value Gcd(Value first, Value second) {
+  while (second) {
+    first %= second;
+    std::swap(first, second);
+  }
+  return first;
 }
 
 } // namespace factorization::utils

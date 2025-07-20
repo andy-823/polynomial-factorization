@@ -5,7 +5,8 @@
 
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
-#include <factorization/galois_field/galois_field_element.hpp>
+#include <factorization/galois_field/field_element_wrapper.hpp>
+#include <factorization/polynomial/simple_polynomial.hpp>
 
 using namespace factorization;  // NOLINT
 
@@ -58,7 +59,7 @@ void RunTests(const std::vector<Test<Int>>& tests) {
   }
 }
 
-TEST_CASE("LogBaseGaloisField") {
+TEST_CASE("LogBaseGaloisField") {  
   SECTION("GF8") {
     std::vector<Test<int64_t>> tests = {
       {QueryType::kMultiply, 0, 0, 0},
@@ -161,6 +162,12 @@ TEST_CASE("LogBaseGaloisField") {
     };
 
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Polynomial = polynomial::SimplePolynomial<Element>;
+    
+    static_assert(concepts::GaloisFieldElement<Element>);
+    static_assert(concepts::Polynom<Polynomial>);
+
     RunTests<GaloisField>(tests);
   }
 
@@ -224,6 +231,12 @@ TEST_CASE("LogBaseGaloisField") {
     };
     // x^2 = x + 1
     using GaloisField = galois_field::LogBasedField<3, 2, {2, 2, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Polynomial = polynomial::SimplePolynomial<Element>;
+    
+    static_assert(concepts::GaloisFieldElement<Element>);
+    static_assert(concepts::Polynom<Polynomial>);
+
     RunTests<GaloisField>(tests);
   }
 }

@@ -51,9 +51,6 @@ class LogBasedField {
 
  public:
   constexpr LogBasedField() {
-    // these 2 forms are impossible
-    poly_to_log_[0] = kFieldSize - 1;
-    log_to_poly_[kFieldSize - 1] = 0;
     // we have
     //   a[0] * alpha^0 + ... + a[k-1] * alpha^{k-1} + alpha^k = 0
     // thus
@@ -89,6 +86,17 @@ class LogBasedField {
         polynom = Add(polynom, adder);
       }
     }
+    for (uint32_t i = 0; i < kFieldSize - 1; ++i) {
+      log_to_poly_[i + kFieldSize - 1] = log_to_poly_[i];
+    }
+  }
+
+  constexpr static Int Zero() {
+    return Int{0};
+  }
+
+  constexpr static Int One() {
+    return Int{1};
   }
 
   //! Returns field element which is sum of 2 given.
@@ -111,8 +119,14 @@ class LogBasedField {
     return result;
   }
 
+  //! Returns field element that equal first - second
+  // TODO: implement better
+  constexpr Int Sub(Int first, Int second) const {
+    return Add(first, Negative(second));
+  }
+
   //! returns element -value that -value + value = 0.
-  constexpr Int Negative(Int value) {
+  constexpr Int Negative(Int value) const {
     Int result = 0;
     Int alpha = 1;
     while (value != 0) {
@@ -129,9 +143,16 @@ class LogBasedField {
     if (first == 0 || second == 0) {
       return 0;
     }
-    first = poly_to_log_[first];
-    second = poly_to_log_[second];
-    return log_to_poly_[(first + second) % (kFieldSize - 1)];
+    return log_to_poly_[poly_to_log_[first] + poly_to_log_[second]];
+  }
+
+  //! Returns field element that is result of multiply first by second**-1
+  constexpr Int Divide(Int first, Int second) const {
+    if (first == 0) {
+      return 0;
+    }
+    return log_to_poly_[kFieldSize - 1 -
+                        poly_to_log_[second] + poly_to_log_[first]];
   }
 
   //! Returns field element that equal given**power
@@ -146,11 +167,7 @@ class LogBasedField {
 
   //! Returns field element b that ab = 1
   constexpr Int Inverse(Int value) const {
-    if (value == 1) {
-      return value;
-    }
-    value = poly_to_log_[value];
-    return log_to_poly_[kFieldSize - 1 - value];
+    return log_to_poly_[kFieldSize - 1 - poly_to_log_[value]];
   }
 
   //! Returns power that alpha^power = value
@@ -158,10 +175,41 @@ class LogBasedField {
     return poly_to_log_[value];
   }
 
+  //! Returns field characteristic
+  constexpr static uint32_t FieldBase() {
+    return kFieldBase;
+  }
+
+  //! Returns field dimension  
+  constexpr static uint32_t FieldPower() {
+    return kFieldPower;
+  }
+
+  //! Return constant (if to use polynomial form)
+  constexpr static Int FieldValueFromConstant(Int value) {
+    return value % kFieldBase;
+  }
+
+  //! First to iterate over field values
+  constexpr static Int FirstFieldValue() {
+    return 0;
+  }
+
+  //! Next to iterate over field value
+  // if value is last one behaviout is undefined
+  constexpr static Int NextFieldValue(Int value) {
+    return ++value;
+  }
+
+  //! Last to iterate over field values
+  constexpr static Int LastFieldValue() {
+    return kFieldSize - 1;
+  }
+
  private:
   constexpr static uint32_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
   // can it be done constexpr since we have constexpr constructor?
-  std::array<Int, kFieldSize> log_to_poly_;
+  std::array<Int, 2 * kFieldSize> log_to_poly_;
   std::array<Int, kFieldSize> poly_to_log_;
 };
 
@@ -177,9 +225,6 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
 
  public:
   constexpr LogBasedField() {
-    // these 2 forms are impossible
-    poly_to_log_[0] = kFieldSize - 1;
-    log_to_poly_[kFieldSize - 1] = 0;
     // Simple version of above
     Int generator = kFieldGenerator[0];
     Int alpha = 1;
@@ -197,9 +242,24 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
                   ? Add((polynom - alpha) << 1, generator)
                   : polynom << 1;
     }
+    for (uint32_t i = 0; i < kFieldSize; ++i) {
+      log_to_poly_[i + kFieldSize - 1] = log_to_poly_[i];
+    }
+  }
+
+  constexpr static Int Zero() {
+    return Int{0};
+  }
+
+  constexpr static Int One() {
+    return Int{1};
   }
 
   constexpr Int Add(Int first, Int second) const {
+    return first ^ second;
+  }
+
+  constexpr Int Sub(Int first, Int second) const {
     return first ^ second;
   }
 
@@ -211,9 +271,15 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     if (first == 0 || second == 0) {
       return 0;
     }
-    first = poly_to_log_[first];
-    second = poly_to_log_[second];
-    return log_to_poly_[(first + second) % (kFieldSize - 1)];
+    return log_to_poly_[poly_to_log_[first] + poly_to_log_[second]];
+  }
+
+  constexpr Int Divide(Int first, Int second) const {
+    if (first == 0) {
+      return 0;
+    }
+    return log_to_poly_[kFieldSize - 1 -
+                        poly_to_log_[second] + poly_to_log_[first]];
   }
 
   template <typename Power>
@@ -229,18 +295,41 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     if (value == 1) {
       return value;
     }
-    value = poly_to_log_[value];
-    return log_to_poly_[kFieldSize - 1 - value];
+    return log_to_poly_[kFieldSize - 1 - poly_to_log_[value]];
   }
 
   constexpr Int Log(Int value) const {
     return poly_to_log_[value];
   }
 
+  constexpr static uint32_t FieldBase() {
+    return 2;
+  }
+
+  constexpr static uint32_t FieldPower() {
+    return kFieldPower;
+  }
+
+  constexpr static Int FieldValueFromConstant(Int value) {
+    return value & 1;
+  }
+
+  constexpr static Int FirstFieldValue() {
+    return 0;
+  }
+
+  constexpr static Int NextFieldValue(Int value) {
+    return ++value;
+  }
+
+  constexpr static Int LastFieldValue() {
+    return kFieldSize - 1;
+  }
+
  private:
   constexpr static uint32_t kFieldSize = 1u << kFieldPower;
   // can it be done constexpr since we have constexpr constructor?
-  std::array<Int, kFieldSize> log_to_poly_;
+  std::array<Int, 2 * kFieldSize> log_to_poly_;
   std::array<Int, kFieldSize> poly_to_log_;
 };
 
