@@ -34,18 +34,26 @@ std::vector<Test<NewInt>> TransformTests(const std::vector<OldInt>& tests) {
 
 template <concepts::GaloisField GaloisField, typename Int>
 void RunTests(const std::vector<Test<Int>>& tests) {
-  GaloisField field;
+  using Element = galois_field::FieldElementWrapper<GaloisField>;
+  GaloisField field{};
 
   for (const Test<Int>& test : tests) {
     switch (test.type) {
       case QueryType::kAdd:
         REQUIRE(field.Add(test.first, test.second) == test.expected);
+        REQUIRE(field.Add(test.first, GaloisField::Zero()) == test.first);
+        REQUIRE(field.Sub(test.expected, test.first) == test.second);
+        REQUIRE(field.Sub(test.first, GaloisField::Zero()) == test.first);
         break;
       case QueryType::kNegative:
         REQUIRE(field.Negative(test.first) == test.expected);
         break;
       case QueryType::kMultiply:
         REQUIRE(field.Multiply(test.first, test.second) == test.expected);
+        REQUIRE(field.Multiply(test.first, GaloisField::One()) == test.first);
+        if (test.expected != GaloisField::Zero()){
+          REQUIRE(field.Divide(test.expected, test.first) == test.second);
+        }
         break;
       case QueryType::kInverse:
         REQUIRE(field.Inverse(test.first) == test.expected);
@@ -59,7 +67,9 @@ void RunTests(const std::vector<Test<Int>>& tests) {
   }
 }
 
-TEST_CASE("LogBaseGaloisField") {  
+TEST_CASE("LogBaseGaloisField") {
+  static_assert(utils::BinPow(2, 2) == 4);
+  
   SECTION("GF8") {
     std::vector<Test<int64_t>> tests = {
       {QueryType::kMultiply, 0, 0, 0},

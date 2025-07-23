@@ -88,14 +88,18 @@ concept GaloisFieldElement = requires (Element element, Element::Value value) {
 
 template <typename Poly>
 concept Polynom = requires(Poly poly, Poly::Element value) {
+  // This requirement is needed since sometimes we need
+  // to perform arithmetic outside of polynom class
   GaloisFieldElement<typename Poly::Element>;
 
+  // TODO: make construction from range
   std::constructible_from<Poly, std::vector<typename Poly::Element>>;
   std::copy_constructible<Poly>;
-  poly = poly;
-  
+  { poly = poly } -> std::same_as<Poly&>;
+
+  // need to put it into std::set or simply compare
   { poly == poly } -> std::same_as<bool>;
-  { poly < poly } -> std::same_as<bool>;  // to put it in set
+  { poly < poly } -> std::same_as<bool>;
 
   { poly += poly } -> std::same_as<Poly&>;
   { poly -= poly } -> std::same_as<Poly&>;
@@ -111,6 +115,8 @@ concept Polynom = requires(Poly poly, Poly::Element value) {
   { poly / poly } -> std::same_as<Poly>;
   { poly % poly } -> std::same_as<Poly>;
 
+  // this specialization is needed since we probably don't want
+  // to construct Polynom from single element just for this
   { poly += value } -> std::same_as<Poly&>;
   { poly -= value } -> std::same_as<Poly&>;
   { poly /= value } -> std::same_as<Poly&>;
@@ -124,6 +130,9 @@ concept Polynom = requires(Poly poly, Poly::Element value) {
   { value * poly } -> std::same_as<Poly>;
   { poly / value } -> std::same_as<Poly>;
 
+  // This method has to follow this invariant
+  //   a[0] + a[1] x + a[2] x^2 + ... + a[n] x^n
+  // From lower power to higher
   { poly.GetElements() } -> std::same_as<std::vector<typename Poly::Element>>;
   // return polynom power + 1 if polynom is nonzero
   // otherwise return zero
@@ -131,6 +140,7 @@ concept Polynom = requires(Poly poly, Poly::Element value) {
   { poly.MakeMonic() } -> std::same_as<void>;
   { poly.Derivative() } -> std::same_as<Poly>;
 
+  // Need to check if polinomial is equal to one or zero without any construction
   { poly.IsOne() } -> std::same_as<bool>;
   { poly.IsZero() } -> std::same_as<bool>;
 };

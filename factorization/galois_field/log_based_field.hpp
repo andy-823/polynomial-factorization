@@ -209,8 +209,8 @@ class LogBasedField {
  private:
   constexpr static uint32_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
   // can it be done constexpr since we have constexpr constructor?
-  std::array<Int, 2 * kFieldSize> log_to_poly_;
-  std::array<Int, kFieldSize> poly_to_log_;
+  std::array<Int, 2 * kFieldSize> log_to_poly_{};
+  std::array<Int, kFieldSize> poly_to_log_{};
 };
 
 /** Specialization for base equal to 2.
@@ -263,7 +263,7 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     return first ^ second;
   }
 
-  constexpr Int Negative(Int value) {
+  constexpr Int Negative(Int value) const {
     return value;
   }
 
@@ -329,8 +329,8 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
  private:
   constexpr static uint32_t kFieldSize = 1u << kFieldPower;
   // can it be done constexpr since we have constexpr constructor?
-  std::array<Int, 2 * kFieldSize> log_to_poly_;
-  std::array<Int, kFieldSize> poly_to_log_;
+  std::array<Int, 2 * kFieldSize> log_to_poly_{};
+  std::array<Int, kFieldSize> poly_to_log_{};
 };
 
 }  // namespace factorization::galois_field

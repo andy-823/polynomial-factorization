@@ -122,7 +122,7 @@ class FieldElementWrapper {
   }
 
  private:
-  constexpr static Field kField;
+  constexpr static Field kField{};
   Value value_;
 };
 
