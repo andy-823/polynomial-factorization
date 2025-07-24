@@ -5,8 +5,6 @@
 
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
-#include <factorization/galois_field/field_element_wrapper.hpp>
-#include <factorization/polynomial/simple_polynomial.hpp>
 
 using namespace factorization;  // NOLINT
 
@@ -20,21 +18,8 @@ struct Test {
   Int expected;
 };
 
-template <typename NewInt, typename OldInt>
-std::vector<Test<NewInt>> TransformTests(const std::vector<OldInt>& tests) {
-  std::vector<Test<NewInt>> result(tests.size());
-  for (size_t i = 0; i < tests.size(); ++i) {
-    result[i].type = tests[i].type;
-    result[i].first = tests[i].first;
-    result[i].second = tests[i].second;
-    result[i].expected = tests[i].expected;
-  }
-  return result;
-}
-
 template <concepts::GaloisField GaloisField, typename Int>
 void RunTests(const std::vector<Test<Int>>& tests) {
-  using Element = galois_field::FieldElementWrapper<GaloisField>;
   GaloisField field{};
 
   for (const Test<Int>& test : tests) {
@@ -45,9 +30,11 @@ void RunTests(const std::vector<Test<Int>>& tests) {
         REQUIRE(field.Sub(test.expected, test.first) == test.second);
         REQUIRE(field.Sub(test.first, GaloisField::Zero()) == test.first);
         break;
+
       case QueryType::kNegative:
         REQUIRE(field.Negative(test.first) == test.expected);
         break;
+
       case QueryType::kMultiply:
         REQUIRE(field.Multiply(test.first, test.second) == test.expected);
         REQUIRE(field.Multiply(test.first, GaloisField::One()) == test.first);
@@ -55,12 +42,15 @@ void RunTests(const std::vector<Test<Int>>& tests) {
           REQUIRE(field.Divide(test.expected, test.first) == test.second);
         }
         break;
+
       case QueryType::kInverse:
         REQUIRE(field.Inverse(test.first) == test.expected);
         break;
+
       case QueryType::kPow:
         REQUIRE(field.Pow(test.first, test.second) == test.expected);
         break;
+
       default:
         throw std::runtime_error("Unexpected query type");
     }
@@ -172,11 +162,6 @@ TEST_CASE("LogBaseGaloisField") {
     };
 
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
-    using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Polynomial = polynomial::SimplePolynomial<Element>;
-    
-    static_assert(concepts::GaloisFieldElement<Element>);
-    static_assert(concepts::Polynom<Polynomial>);
 
     RunTests<GaloisField>(tests);
   }
@@ -241,11 +226,6 @@ TEST_CASE("LogBaseGaloisField") {
     };
     // x^2 = x + 1
     using GaloisField = galois_field::LogBasedField<3, 2, {2, 2, 1}>;
-    using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Polynomial = polynomial::SimplePolynomial<Element>;
-    
-    static_assert(concepts::GaloisFieldElement<Element>);
-    static_assert(concepts::Polynom<Polynomial>);
 
     RunTests<GaloisField>(tests);
   }

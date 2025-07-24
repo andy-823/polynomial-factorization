@@ -140,7 +140,7 @@ concept Polynom = requires(Poly poly, Poly::Element value) {
   { poly.MakeMonic() } -> std::same_as<void>;
   { poly.Derivative() } -> std::same_as<Poly>;
 
-  // Need to check if polinomial is equal to one or zero without any construction
+  // Need to check if polynomial is equal to one or zero without any construction
   { poly.IsOne() } -> std::same_as<bool>;
   { poly.IsZero() } -> std::same_as<bool>;
 };
