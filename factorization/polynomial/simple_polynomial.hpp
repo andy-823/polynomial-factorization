@@ -37,12 +37,15 @@ template <concepts::GaloisFieldElement Elem>
 class SimplePolynomial {
  public:
   using Element = Elem;
-  using Value = Element::Value;
+  using Value = typename Element::Value;
 
  public:
   SimplePolynomial() = default;
 
-  SimplePolynomial(const std::vector<Value>& elements) {
+  // TODO: replace this constructor with better one for convenience
+  template <typename T>
+  SimplePolynomial(const std::vector<T>& elements) {
+    static_assert(std::constructible_from<Value, T>);
     data_.reserve(elements.size());
     for (const auto& element : elements) {
       data_.emplace_back(element);
@@ -79,8 +82,8 @@ class SimplePolynomial {
       return data_.size() < other.data_.size();
     }
     for (size_t i = 0; i < data_.size(); ++i) {
-      if (data_[i].Get() < other.data_[i].Get()) {
-        return true;
+      if (data_[i].Get() != other.data_[i].Get()) {
+        return data_[i].Get() < other.data_[i].Get();
       }
     }
     return false;  // equal
@@ -144,9 +147,18 @@ class SimplePolynomial {
     }
     size_t result_power = data_.size() + other.data_.size() - 1;
     std::vector<Element> result(result_power, Element::Zero());
-    for (size_t power = 0; power < result_power; ++power) {
-      for (size_t i = 0; i <= power; ++i) {
-        result[power] += data_[i] * other.data_[power - i];
+
+    for (size_t power = 0; power < other.data_.size(); ++power) {
+      Element coefficient = other.data_[power];
+      if (coefficient == Element::Zero()) {
+        continue;
+      }
+      auto what = data_.begin();
+      auto with = result.begin() + power;
+      while (what != data_.end()) {
+        *with += *what * coefficient; 
+        ++what;
+        ++with;
       }
     }
     data_ = std::move(result);
@@ -197,8 +209,8 @@ class SimplePolynomial {
       }
       while (divisor != other.data_.rend()) {
         *divident -= *divisor * coefficient;
-        --divident;
-        --divisor;
+        ++divident;
+        ++divisor;
       }
     }
     data_ = std::move(result);
@@ -232,8 +244,8 @@ class SimplePolynomial {
       }
       while (divisor != other.data_.rend()) {
         *divident -= *divisor * coefficient;
-        --divident;
-        --divisor;
+        ++divident;
+        ++divisor;
       }
     }
     RemoveLeadingZeros();

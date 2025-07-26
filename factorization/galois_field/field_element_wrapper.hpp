@@ -39,7 +39,11 @@ class FieldElementWrapper {
   using Value = typename Field::Value;
 
  public:
-  constexpr FieldElementWrapper(Value value = Value{}) : value_(value) {
+  constexpr FieldElementWrapper() = default;
+
+  template <typename T>
+  constexpr FieldElementWrapper(T value) : value_(std::forward<T>(value)) {
+    static_assert(std::constructible_from<Value, T>);
   }
 
   constexpr FieldElementWrapper(const FieldElementWrapper&) = default;

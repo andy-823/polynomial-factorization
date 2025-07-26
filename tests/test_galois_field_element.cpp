@@ -72,12 +72,6 @@ void RunTests(const std::vector<Test<Value>>& tests) {
   }
 }
 
-// template <concepts::GaloisFieldElement Element, std::ranges::range Range>
-// std::vector<Element> MakeElements(Range&& range) {
-//   std::vector<Element> result(range.begin(), range.end());
-//   return result;
-// }
-
 TEST_CASE("FieldElementWrapper") {
   std::vector<Test<int64_t>> tests = {
     {QueryType::kMultiply, 0, 0, 0},
