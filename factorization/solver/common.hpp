@@ -20,39 +20,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma  once
+#pragma once
 
-namespace factorization::utils {
+#include <factorization/concepts.hpp>
 
-template <class Iterator>
-class IteratorRange {
- public:
-  IteratorRange(Iterator begin, Iterator end) : begin_(begin), end_(end) {
-  }
+namespace factorization::solver {
 
-  Iterator begin() const {  // NOLINT
-    return begin_;
-  }
-  Iterator end() const {  // NOLINT
-    return end_;
-  }
-
- private:
-  Iterator begin_;
-  Iterator end_;
+template <concepts::Polynom Polynom>
+struct Factor {
+  Polynom factor;
+  int power;
 };
 
-template <typename Value, typename Power = Value>
-constexpr Value BinPow(Value base, Power power) {
-  Value result{1};
-  while (power > 0) {
-    if (power % 2 != 0) {
-      result = result * base;
-    }
-    base = base * base;
-    power /= 2;
+template <concepts::Polynom Polynom>
+constexpr Polynom Gcd(Polynom first, Polynom second) {
+  while (!second.IsZero()) {
+    first %= second;
+    std::swap(first, second);
   }
-  return result;
+  first.MakeMonic();
+  return first;
 }
 
-} // namespace factorization::utils
+}  // namespace factorization::solver
