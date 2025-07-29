@@ -39,7 +39,7 @@ class Berlekamp {
 
  public:
   std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
-    std::vector<Polynom> result;
+    std::vector<Factor<Polynom>> result;
     polynom.MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
       return {};
@@ -96,7 +96,7 @@ class Berlekamp {
                                                kFieldPower - 1);
       elements[i / kFieldBase] = elements[i].Pow(kPower);
     }
-    elements.resize(elements.size() / kFieldBase);
+    elements.resize((elements.size() + kFieldBase - 1) / kFieldBase);
     return Polynom(std::move(elements));
   }
 
@@ -106,7 +106,7 @@ class Berlekamp {
   std::vector<Polynom> SquareFreeFactorize(Polynom polynom) const {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
     // that means polynom is irreducible
-    if (basis.size()) {
+    if (basis.size() == 1) {
       return {polynom};
     }
     // this is supposed to be range
@@ -145,7 +145,7 @@ class Berlekamp {
   // it consists of polynomials g which
   //   g^q = g (mod f)
   // q is field size
-  std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) {
+  std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) const {
     std::vector<Polynom> result;
     // since powering to q-th power is linear, it can be done with matrix
     // we want not to power but to find specific polynomials
@@ -178,20 +178,32 @@ class Berlekamp {
     //   x_2 = 1, here c_1 = 1
     //   x_3 + 0 * x_2 = 0
     size_t rank = matrix.size();
+    if (rank == 0) {
+      result.emplace_back(Element::One());
+      return result;
+    }
     size_t n = matrix[0].size();
     std::vector<size_t> free_coefficient_positions;
     std::vector<size_t> data_position;
     free_coefficient_positions.reserve(n - rank);
     data_position.reserve(rank);
-    result.reserve(rank);
+    result.reserve(n - rank);
 
-    for (size_t row = 0, column = 0; row < rank; ++row) {
-      while (column < n && matrix[row][column] == Element::Zero()) {
-        free_coefficient_positions.emplace_back(column);
-        ++column;
+    {
+      size_t column = 0;
+      for (size_t row = 0; row < rank; ++row) {
+        while (column < n && matrix[row][column] == Element::Zero()) {
+          free_coefficient_positions.emplace_back(column);
+          ++column;
+        }
+        data_position.emplace_back(column);
       }
-      data_position.emplace_back(column);
+      // free coefficient after the last data position
+      while (++column < n) {
+        free_coefficient_positions.emplace_back(column);
+      }
     }
+
     for (const auto& column : free_coefficient_positions) {
       std::vector<Element> current(n, Element::Zero());
       current[column] = Element::One();
@@ -205,7 +217,7 @@ class Berlekamp {
 
   // returns (A - E)^T
   // where A is equivalent to powering to q-th power
-  std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) {
+  std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) const {
     constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
                                              Element::FieldPower());
     size_t n = factorizing.Size() - 1;
@@ -226,7 +238,7 @@ class Berlekamp {
       {
         // here we get that x, done a little weird
         std::vector<Element> tmp(kFieldSize + 1);
-        tmp.back() == Element::One();  // the only nonzero element is last
+        tmp.back() = Element::One();  // the only nonzero element is last
         base = Polynom(std::move(tmp)) % factorizing;
       }
       for (size_t power = 0; power < n; ++power) {
@@ -251,7 +263,7 @@ class Berlekamp {
   }
 
   std::vector<std::vector<Element>> PerformGaussElimination(
-    std::vector<std::vector<Element>> matrix) {
+    std::vector<std::vector<Element>> matrix) const {
 
     size_t n = matrix.size();
     size_t row = 0;
@@ -263,7 +275,7 @@ class Berlekamp {
       }
       if (next_row != n) {
         // we have found this row
-        std::swap(next_row, row);
+        std::swap(matrix[next_row], matrix[row]);
         // we want to set coefficient at matrix[row][column] to one
         Element coefficient = matrix[row][column].Inverse();
         for (size_t i = column; i < n; ++i) {

@@ -30,6 +30,8 @@ template <concepts::Polynom Polynom>
 struct Factor {
   Polynom factor;
   int power;
+
+  bool operator==(const Factor&) const = default;
 };
 
 template <concepts::Polynom Polynom>
