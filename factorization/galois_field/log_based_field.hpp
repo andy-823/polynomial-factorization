@@ -23,6 +23,7 @@
 #pragma once
 
 #include <array>
+#include <climits>
 #include <cstdint>
 
 #include <factorization/utils.hpp>
@@ -51,11 +52,25 @@ class LogBasedField {
 
  public:
   constexpr LogBasedField() {
+    for (Int value = 0; value < (1 << kBitsPerSymbol * kFieldPower); ++value) {
+      constexpr int kBitMask = (1 << kBitsPerSymbol) - 1;
+      Int good_value = 0;
+      for (uint32_t i = 0; i < kFieldPower; ++i) {
+        // extract i-th symbol
+        Int digit = (value >> (i * kBitsPerSymbol)) & kBitMask;
+        // that means we got incorrect value - need to skip it 
+        if (digit >= 2 * kFieldBase) {
+          break;
+        }
+        digit = digit >= kFieldBase ? digit - kFieldBase : digit;
+        good_value |= digit << (kBitsPerSymbol * i);
+      }
+      to_good_view_[value] = good_value;
+    }
     // we have
     //   a[0] * alpha^0 + ... + a[k-1] * alpha^{k-1} + alpha^k = 0
     // thus
     //   alpha^k = -a[0] * alpha^0 - ... - a[k-1] * alpha^{k-1}
-    Int alpha = utils::BinPow(kFieldBase, kFieldPower - 1);
     Int polynom = 1;
     for (Int power = 0; power + 1 < kFieldSize; ++power) {
       log_to_poly_[power] = polynom;
@@ -65,10 +80,12 @@ class LogBasedField {
       //   polynom = c * alpha^{k - 1} + p(alpha), deg(p(alpha)) < k - 1
       // Then
       //   polynom * alpha = c * alpha^{k} + alpha * p(alpha)
-      Int overflow = polynom / alpha;
+      constexpr int kBitsShift = kBitsPerSymbol * (kFieldPower  - 1);
+      Int overflow = polynom >> kBitsShift;
       // Remove c * alpha^{k - 1} at the beginning
       // and multiply remaining part by alpha
-      polynom = (polynom - overflow * alpha) * kFieldBase;
+      polynom &= (1 << kBitsShift) - 1;
+      polynom <<= kBitsPerSymbol;
       if (overflow > 0) {
         // now we want to add
         //   c * alpha^{k}, here c != 0
@@ -79,10 +96,10 @@ class LogBasedField {
         overflow = Negative(overflow);
         Int adder = 0;
         for (uint32_t i = kFieldPower - 1; i > 0; --i) {
-          adder += kFieldGenerator[i] * overflow % kFieldBase;
-          adder *= kFieldBase;
+          adder |= kFieldGenerator[i] * overflow % kFieldBase;
+          adder <<= kBitsPerSymbol;
         }
-        adder += kFieldGenerator[0] * overflow % kFieldBase;
+        adder |= kFieldGenerator[0] * overflow % kFieldBase;
         polynom = Add(polynom, adder);
       }
     }
@@ -101,41 +118,19 @@ class LogBasedField {
 
   //! Returns field element which is sum of 2 given.
   constexpr Int Add(Int first, Int second) const {
-    // using polynomial form:
-    //   first  = a[0] * alpha^0 + ... + a[k] * alpha^k
-    //   second = b[0] * alpha^0 + ... + b[k] * alpha^k
-    // we add these 2 polynomials element by element
-    Int result{(first % kFieldBase + second % kFieldBase) % kFieldBase};
-    // done a little dirty in terms of appearance
-    Int alpha = kFieldBase;
-    first /= kFieldBase;
-    second /= kFieldBase;
-    while (first != 0 || second != 0) {
-      result += (first + second) % kFieldBase * alpha;
-      alpha *= kFieldBase;
-      first /= kFieldBase;
-      second /= kFieldBase;
-    }
-    return result;
+    return to_good_view_[first + second];
   }
 
   //! Returns field element that equal first - second
-  // TODO: implement better
+  //
   constexpr Int Sub(Int first, Int second) const {
     return Add(first, Negative(second));
   }
 
   //! returns element -value that -value + value = 0.
   constexpr Int Negative(Int value) const {
-    Int result = 0;
-    Int alpha = 1;
-    while (value != 0) {
-      auto a = value % kFieldBase;
-      result += a != 0 ? (kFieldBase - a) * alpha : 0;
-      value /= kFieldBase;
-      alpha *= kFieldBase;
-    }
-    return result;
+    constexpr Int kOtherZero = CalcMask() * kFieldBase;
+    return to_good_view_[kOtherZero - value];
   }
 
   //! Returns field element which is product of 2 given.
@@ -196,21 +191,61 @@ class LogBasedField {
   }
 
   //! Next to iterate over field value
-  // if value is last one behaviout is undefined
+  // if value is last one behaviour is undefined
+  // O(1*) - armotized constant - seems enough
   constexpr Int NextFieldValue(Int value) const {
-    return ++value;
+    ++value;
+    // here I use property
+    // that correct field value will not change in this table 
+    while (value != to_good_view_[value]) {
+      ++value;
+    }
+    return value;
   }
 
   //! Last to iterate over field values
+  // I hope it will be calculated during compilation
   constexpr Int LastFieldValue() const {
-    return kFieldSize - 1;
+    return CalcMask() * (kFieldBase - 1);
   }
 
  private:
-  constexpr static uint32_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
-  // can it be done constexpr since we have constexpr constructor?
+  constexpr static int GetBitesPerSymbol() {
+    int bits_per_symbol = 1;
+    while ((1 << bits_per_symbol) < kFieldBase) {
+      ++bits_per_symbol;
+    }
+    return bits_per_symbol + 1;
+  }
+  
+  constexpr static Int CalcMask() {
+    Int result = 1;
+    for (uint32_t i = 1; i < kFieldPower; ++i) {
+      result = (result << kBitsPerSymbol) + 1;
+    }
+    return result;
+  }
+
+  constexpr static int kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+  constexpr static int kBitsPerSymbol = GetBitesPerSymbol();
+
+  static_assert(kBitsPerSymbol * kFieldPower <= sizeof(Int) * CHAR_BIT,
+                "Integer type too small for this field");
+
   std::array<Int, 2 * kFieldSize> log_to_poly_{};
-  std::array<Int, kFieldSize> poly_to_log_{};
+  // many values of this array will be inconsistent
+  std::array<Int, 1 << (kBitsPerSymbol * kFieldPower - 1)> poly_to_log_{};
+  // values in polynomial form are presented as
+  //   a(x) = a_0 + a_1 x + ...
+  // usually x = kFieldBase is used to store a, but it make addition difficult
+  // here i use x = 2^kBitsPerSymbol, addition becomes like this
+  //  (a_0 + b_0) + (a_1 + b_1) x + ...
+  // Note: a_0 + b_0 MUST be less than x
+  // then we know that a_i + b_i goes to (a_i + b_i) (mod kFieldBase)
+  // so I precalculate outcome for each possible a + b
+  // Addition becomes much faster
+  // some values here can be inconsistent
+  std::array<Int, 1 << (kBitsPerSymbol * kFieldPower)> to_good_view_{};
 };
 
 /** Specialization for base equal to 2.

@@ -61,7 +61,8 @@ TEST_CASE("Berlekamp") {
   }
 
   SECTION("Stress") {
-    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using GaloisField = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
+    // using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     // using GaloisField = galois_field::LogBasedField<3, 2, {2, 2, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Poly = polynomial::SimplePolynomial<Element>;
