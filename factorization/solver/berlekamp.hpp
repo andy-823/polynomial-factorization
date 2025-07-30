@@ -119,7 +119,7 @@ class Berlekamp {
     std::vector<Polynom> new_factors;
     new_factors.reserve(basis.size());
 
-    for (const auto& factorizing : factors) {
+    for (const auto& factorizing : basis) {
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
           Polynom new_factor = Gcd(factor, factorizing - c);
@@ -178,11 +178,7 @@ class Berlekamp {
     //   x_2 = 1, here c_1 = 1
     //   x_3 + 0 * x_2 = 0
     size_t rank = matrix.size();
-    if (rank == 0) {
-      result.emplace_back(Element::One());
-      return result;
-    }
-    size_t n = matrix[0].size();
+    size_t n = polynom.Size() - 1;
     std::vector<size_t> free_coefficient_positions;
     std::vector<size_t> data_position;
     free_coefficient_positions.reserve(n - rank);
@@ -197,10 +193,12 @@ class Berlekamp {
           ++column;
         }
         data_position.emplace_back(column);
+        ++column;
       }
       // free coefficient after the last data position
-      while (++column < n) {
+      while (column < n) {
         free_coefficient_positions.emplace_back(column);
+        ++column;
       }
     }
 
