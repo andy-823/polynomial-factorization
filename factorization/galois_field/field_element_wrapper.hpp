@@ -57,15 +57,15 @@ class FieldElementWrapper {
   constexpr bool operator==(const FieldElementWrapper&) const = default;
 
   constexpr static FieldElementWrapper Zero() {
-    return FieldElementWrapper(Field::Zero());
+    return FieldElementWrapper(kField.Zero());
   }
 
   constexpr static FieldElementWrapper One() {
-    return FieldElementWrapper(Field::One());
+    return FieldElementWrapper(kField.One());
   }
 
   constexpr static FieldElementWrapper AsPolyConstant(Value value) {
-    return Field::FieldValueFromConstant(value);
+    return kField.FieldValueFromConstant(value);
   }
 
   constexpr Value Get() const {
@@ -115,11 +115,11 @@ class FieldElementWrapper {
 
   // std vector is temporary option
   constexpr static std::vector<FieldElementWrapper> AllFieldElements() {
-    Value current = Field::FirstFieldValue();
+    Value current = kField.FirstFieldValue();
     std::vector<FieldElementWrapper> result;
     result.emplace_back(current);
-    while (current != Field::LastFieldValue()) {
-      current = Field::NextFieldValue(current);
+    while (current != kField.LastFieldValue()) {
+      current = kField.NextFieldValue(current);
       result.emplace_back(current);
     }
     return result;

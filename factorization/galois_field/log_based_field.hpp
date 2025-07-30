@@ -91,11 +91,11 @@ class LogBasedField {
     }
   }
 
-  constexpr static Int Zero() {
+  constexpr Int Zero() const {
     return Int{0};
   }
 
-  constexpr static Int One() {
+  constexpr Int One() const {
     return Int{1};
   }
 
@@ -186,23 +186,23 @@ class LogBasedField {
   }
 
   //! Return constant (if to use polynomial form)
-  constexpr static Int FieldValueFromConstant(Int value) {
+  constexpr Int FieldValueFromConstant(Int value) const {
     return value % kFieldBase;
   }
 
   //! First to iterate over field values
-  constexpr static Int FirstFieldValue() {
+  constexpr Int FirstFieldValue() const {
     return 0;
   }
 
   //! Next to iterate over field value
   // if value is last one behaviout is undefined
-  constexpr static Int NextFieldValue(Int value) {
+  constexpr Int NextFieldValue(Int value) const {
     return ++value;
   }
 
   //! Last to iterate over field values
-  constexpr static Int LastFieldValue() {
+  constexpr Int LastFieldValue() const {
     return kFieldSize - 1;
   }
 
@@ -247,11 +247,11 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     }
   }
 
-  constexpr static Int Zero() {
+  constexpr Int Zero() const {
     return Int{0};
   }
 
-  constexpr static Int One() {
+  constexpr Int One() const {
     return Int{1};
   }
 
@@ -310,19 +310,19 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     return kFieldPower;
   }
 
-  constexpr static Int FieldValueFromConstant(Int value) {
+  constexpr Int FieldValueFromConstant(Int value) const {
     return value & 1;
   }
 
-  constexpr static Int FirstFieldValue() {
+  constexpr Int FirstFieldValue() const {
     return 0;
   }
 
-  constexpr static Int NextFieldValue(Int value) {
+  constexpr Int NextFieldValue(Int value) const {
     return ++value;
   }
 
-  constexpr static Int LastFieldValue() {
+  constexpr Int LastFieldValue() const {
     return kFieldSize - 1;
   }
 

@@ -26,9 +26,9 @@ void RunTests(const std::vector<Test<Int>>& tests) {
     switch (test.type) {
       case QueryType::kAdd:
         REQUIRE(field.Add(test.first, test.second) == test.expected);
-        REQUIRE(field.Add(test.first, GaloisField::Zero()) == test.first);
+        REQUIRE(field.Add(test.first, field.Zero()) == test.first);
         REQUIRE(field.Sub(test.expected, test.first) == test.second);
-        REQUIRE(field.Sub(test.first, GaloisField::Zero()) == test.first);
+        REQUIRE(field.Sub(test.first, field.Zero()) == test.first);
         break;
 
       case QueryType::kNegative:
@@ -37,8 +37,8 @@ void RunTests(const std::vector<Test<Int>>& tests) {
 
       case QueryType::kMultiply:
         REQUIRE(field.Multiply(test.first, test.second) == test.expected);
-        REQUIRE(field.Multiply(test.first, GaloisField::One()) == test.first);
-        if (test.expected != GaloisField::Zero()){
+        REQUIRE(field.Multiply(test.first, field.One()) == test.first);
+        if (test.expected != field.Zero()){
           REQUIRE(field.Divide(test.expected, test.first) == test.second);
         }
         break;

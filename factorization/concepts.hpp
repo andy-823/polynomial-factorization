@@ -31,8 +31,8 @@ namespace factorization::concepts {
 template <typename Field>
 concept GaloisField = requires (Field field, Field::Value value) {
   // return addition and multiplication neutral elements respectively
-  { Field::Zero() } -> std::same_as<typename Field::Value>;
-  { Field::One() } -> std::same_as<typename Field::Value>;
+  { field.Zero() } -> std::same_as<typename Field::Value>;
+  { field.One() } -> std::same_as<typename Field::Value>;
   // perform arithmetic operations over galois field
   { field.Add(value, value) } -> std::same_as<typename Field::Value>;
   { field.Sub(value, value) } -> std::same_as<typename Field::Value>;
@@ -45,18 +45,18 @@ concept GaloisField = requires (Field field, Field::Value value) {
   { Field::FieldBase() } -> std::integral;
   { Field::FieldPower() } -> std::integral;
 
-  { Field::FieldValueFromConstant(value) } -> std::same_as<typename Field::Value>;
+  { field.FieldValueFromConstant(value) } -> std::same_as<typename Field::Value>;
 
   // need to iterate over all field elements
-  { Field::FirstFieldValue() } -> std::same_as<typename Field::Value>;
-  { Field::NextFieldValue(value) } -> std::same_as<typename Field::Value>;
-  { Field::LastFieldValue() } -> std::same_as<typename Field::Value>;
+  { field.FirstFieldValue() } -> std::same_as<typename Field::Value>;
+  { field.NextFieldValue(value) } -> std::same_as<typename Field::Value>;
+  { field.LastFieldValue() } -> std::same_as<typename Field::Value>;
 };
 
 template <typename Element>
 concept GaloisFieldElement = requires (Element element, Element::Value value) {
   std::copy_constructible<Element>;
-  element = element;
+  { element = element } -> std::same_as<Element&>;
 
   { Element::One() } -> std::same_as<Element>;
   { Element::Zero() } -> std::same_as<Element>;
