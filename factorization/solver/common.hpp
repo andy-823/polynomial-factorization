@@ -35,7 +35,7 @@ struct Factor {
 };
 
 template <concepts::Polynom Polynom>
-constexpr Polynom Gcd(Polynom first, Polynom second) {
+constexpr inline Polynom Gcd(Polynom first, Polynom second) {
   while (!second.IsZero()) {
     first %= second;
     std::swap(first, second);

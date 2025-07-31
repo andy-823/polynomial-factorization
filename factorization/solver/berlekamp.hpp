@@ -38,7 +38,7 @@ class Berlekamp {
   using Element = typename Polynom::Element;
 
  public:
-  std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
+  inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
     std::vector<Factor<Polynom>> result;
     polynom.MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
@@ -53,7 +53,7 @@ class Berlekamp {
   }
 
  private:
-  std::map<Polynom, int> FactorizeImpl(Polynom polynom) const {
+  inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) const {
     std::map<Polynom, int> result;
     while (!polynom.IsOne()) {
       Polynom derivative = polynom.Derivative();
@@ -79,7 +79,7 @@ class Berlekamp {
   // assume our polynom is
   //   f(x) = g(x)^p
   // this function returns such g(x) by given f(x)
-  Polynom FieldBaseRoot(const Polynom& polynom) const {
+  inline Polynom FieldBaseRoot(const Polynom& polynom) const {
     constexpr int kFieldBase = Element::FieldBase();
     constexpr int kFieldPower = Element::FieldPower();
 
@@ -103,7 +103,7 @@ class Berlekamp {
   // input is monic f(x) = f_1(x) ... f_k(x)
   // where f_1 ... f_k are irreducible
   // return vector because of no repeating factors
-  std::vector<Polynom> SquareFreeFactorize(Polynom polynom) const {
+  inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) const {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
     // that means polynom is irreducible
     if (basis.size() == 1) {
@@ -145,7 +145,7 @@ class Berlekamp {
   // it consists of polynomials g which
   //   g^q = g (mod f)
   // q is field size
-  std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) const {
+  inline std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) const {
     std::vector<Polynom> result;
     // since powering to q-th power is linear, it can be done with matrix
     // we want not to power but to find specific polynomials
@@ -215,7 +215,7 @@ class Berlekamp {
 
   // returns (A - E)^T
   // where A is equivalent to powering to q-th power
-  std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) const {
+  inline std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) const {
     constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
                                              Element::FieldPower());
     size_t n = factorizing.Size() - 1;
@@ -260,7 +260,7 @@ class Berlekamp {
     return result;
   }
 
-  std::vector<std::vector<Element>> PerformGaussElimination(
+  inline std::vector<std::vector<Element>> PerformGaussElimination(
     std::vector<std::vector<Element>> matrix) const {
 
     size_t n = matrix.size();

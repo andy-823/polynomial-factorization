@@ -39,82 +39,87 @@ class FieldElementWrapper {
   using Value = typename Field::Value;
 
  public:
-  constexpr FieldElementWrapper() = default;
+  constexpr inline FieldElementWrapper() = default;
 
   template <typename T>
-  constexpr FieldElementWrapper(T value) : value_(std::forward<T>(value)) {
+  constexpr inline FieldElementWrapper(T value)
+      : value_(std::forward<T>(value)) {
     static_assert(std::constructible_from<Value, T>);
   }
 
-  constexpr FieldElementWrapper(const FieldElementWrapper&) = default;
-  constexpr FieldElementWrapper(FieldElementWrapper&&) = default;
+  constexpr inline FieldElementWrapper(const FieldElementWrapper&) = default;
+  constexpr inline FieldElementWrapper(FieldElementWrapper&&) = default;
 
-  constexpr FieldElementWrapper& operator=(const FieldElementWrapper&) = default;
-  constexpr FieldElementWrapper& operator=(FieldElementWrapper&&) = default;
+  constexpr inline FieldElementWrapper& operator=(const FieldElementWrapper&) = default;
+  constexpr inline FieldElementWrapper& operator=(FieldElementWrapper&&) = default;
 
-  ~FieldElementWrapper() = default;
+  inline ~FieldElementWrapper() = default;
 
-  constexpr bool operator==(const FieldElementWrapper&) const = default;
+  constexpr inline bool operator==(const FieldElementWrapper&) const = default;
 
-  constexpr static FieldElementWrapper Zero() {
+  constexpr static inline FieldElementWrapper Zero() {
     return FieldElementWrapper(kField.Zero());
   }
 
-  constexpr static FieldElementWrapper One() {
+  constexpr static inline FieldElementWrapper One() {
     return FieldElementWrapper(kField.One());
   }
 
-  constexpr static FieldElementWrapper AsPolyConstant(Value value) {
+  constexpr static inline FieldElementWrapper AsPolyConstant(Value value) {
     return kField.FieldValueFromConstant(value);
   }
 
-  constexpr Value Get() const {
+  constexpr inline Value Get() const {
     return value_;
   }
 
-  constexpr FieldElementWrapper& operator+=(const FieldElementWrapper& other) {
+  constexpr inline FieldElementWrapper& operator+=(
+      const FieldElementWrapper& other) {
     value_ = kField.Add(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper& operator-=(const FieldElementWrapper& other) {
+  constexpr inline FieldElementWrapper& operator-=(
+      const FieldElementWrapper& other) {
     value_ = kField.Sub(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper operator-() const {
+  constexpr inline FieldElementWrapper operator-() const {
     return FieldElementWrapper(kField.Negative(value_));
   }
 
-  constexpr FieldElementWrapper& operator*=(const FieldElementWrapper& other) {
+  constexpr inline FieldElementWrapper& operator*=(
+      const FieldElementWrapper& other) {
     value_ = kField.Multiply(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper& operator/=(const FieldElementWrapper& other) {
+  constexpr inline FieldElementWrapper& operator/=(
+      const FieldElementWrapper& other) {
     value_ = kField.Divide(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper Inverse() const {
+  constexpr inline FieldElementWrapper Inverse() const {
     return FieldElementWrapper(kField.Inverse(value_));
   }
 
   template <typename Power>
-  constexpr FieldElementWrapper Pow(Power power) const {
+  constexpr inline FieldElementWrapper Pow(Power power) const {
     return FieldElementWrapper(kField.Pow(value_, power));
   }
 
-  constexpr static uint32_t FieldBase() {
+  constexpr static inline uint32_t FieldBase() {
     return Field::FieldBase();
   }
 
-  constexpr static uint32_t FieldPower() {
+  constexpr static inline uint32_t FieldPower() {
     return Field::FieldPower();
   }
 
   // std vector is temporary option
-  constexpr static std::vector<FieldElementWrapper> AllFieldElements() {
+  constexpr static inline std::vector<FieldElementWrapper> AllFieldElements() {
     Value current = kField.FirstFieldValue();
     std::vector<FieldElementWrapper> result;
     result.emplace_back(current);
@@ -126,31 +131,31 @@ class FieldElementWrapper {
   }
 
  private:
-  constexpr static Field kField{};
+  constexpr static inline Field kField{};
   Value value_;
 };
 
 template <concepts::GaloisField Field>
-constexpr FieldElementWrapper<Field> operator+(FieldElementWrapper<Field> first,
-                                               FieldElementWrapper<Field> second) {
+constexpr inline FieldElementWrapper<Field> operator+(
+    FieldElementWrapper<Field> first, FieldElementWrapper<Field> second) {
   return first += second;
 }
 
 template <concepts::GaloisField Field>
-constexpr FieldElementWrapper<Field> operator-(FieldElementWrapper<Field> first,
-                                               FieldElementWrapper<Field> second) {
+constexpr inline FieldElementWrapper<Field> operator-(
+    FieldElementWrapper<Field> first, FieldElementWrapper<Field> second) {
   return first -= second;
 }
 
 template <concepts::GaloisField Field>
-constexpr FieldElementWrapper<Field> operator*(FieldElementWrapper<Field> first,
-                                               FieldElementWrapper<Field> second) {
+constexpr inline FieldElementWrapper<Field> operator*(
+    FieldElementWrapper<Field> first, FieldElementWrapper<Field> second) {
   return first *= second;
 }
 
 template <concepts::GaloisField Field>
-constexpr FieldElementWrapper<Field> operator/(FieldElementWrapper<Field> first,
-                                               FieldElementWrapper<Field> second) {
+constexpr inline FieldElementWrapper<Field> operator/(
+    FieldElementWrapper<Field> first, FieldElementWrapper<Field> second) {
   return first /= second;
 }
 

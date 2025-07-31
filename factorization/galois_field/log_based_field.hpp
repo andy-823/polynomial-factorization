@@ -60,7 +60,7 @@ class LogBasedField {
   using Value = Int;
 
  public:
-  constexpr LogBasedField() {
+  constexpr inline LogBasedField() {
     for (Int value = 0; value < (1 << kBitsPerSymbol * kFieldPower); ++value) {
       constexpr int kBitMask = (1 << kBitsPerSymbol) - 1;
       Int good_value = 0;
@@ -117,33 +117,33 @@ class LogBasedField {
     }
   }
 
-  constexpr Int Zero() const {
+  constexpr inline Int Zero() const {
     return Int{0};
   }
 
-  constexpr Int One() const {
+  constexpr inline Int One() const {
     return Int{1};
   }
 
   //! Returns field element which is sum of 2 given.
-  constexpr Int Add(Int first, Int second) const {
+  constexpr inline Int Add(Int first, Int second) const {
     return to_good_view_[first + second];
   }
 
   //! Returns field element that equal first - second
   //
-  constexpr Int Sub(Int first, Int second) const {
+  constexpr inline Int Sub(Int first, Int second) const {
     return Add(first, Negative(second));
   }
 
   //! returns element -value that -value + value = 0.
-  constexpr Int Negative(Int value) const {
+  constexpr inline Int Negative(Int value) const {
     constexpr Int kOtherZero = CalcMask() * kFieldBase;
     return to_good_view_[kOtherZero - value];
   }
 
   //! Returns field element which is product of 2 given.
-  constexpr Int Multiply(Int first, Int second) const {
+  constexpr inline Int Multiply(Int first, Int second) const {
     if (first == 0 || second == 0) {
       return 0;
     }
@@ -151,7 +151,7 @@ class LogBasedField {
   }
 
   //! Returns field element that is result of multiply first by second**-1
-  constexpr Int Divide(Int first, Int second) const {
+  constexpr inline Int Divide(Int first, Int second) const {
     if (first == 0) {
       return 0;
     }
@@ -161,7 +161,7 @@ class LogBasedField {
 
   //! Returns field element that equal given**power
   template <typename Power>
-  constexpr Int Pow(Int base, Power power) const {
+  constexpr inline Int Pow(Int base, Power power) const {
     if (base == 0) {
       return 0;
     }
@@ -170,39 +170,39 @@ class LogBasedField {
   }
 
   //! Returns field element b that ab = 1
-  constexpr Int Inverse(Int value) const {
+  constexpr inline Int Inverse(Int value) const {
     return log_to_poly_[kFieldSize - 1 - poly_to_log_[value]];
   }
 
   //! Returns power that alpha^power = value
-  constexpr Int Log(Int value) const {
+  constexpr inline Int Log(Int value) const {
     return poly_to_log_[value];
   }
 
   //! Returns field characteristic
-  constexpr static uint32_t FieldBase() {
+  constexpr static inline uint32_t FieldBase() {
     return kFieldBase;
   }
 
   //! Returns field dimension  
-  constexpr static uint32_t FieldPower() {
+  constexpr static inline uint32_t FieldPower() {
     return kFieldPower;
   }
 
   //! Return constant (if to use polynomial form)
-  constexpr Int FieldValueFromConstant(Int value) const {
+  constexpr inline Int FieldValueFromConstant(Int value) const {
     return value % kFieldBase;
   }
 
   //! First to iterate over field values
-  constexpr Int FirstFieldValue() const {
+  constexpr inline Int FirstFieldValue() const {
     return 0;
   }
 
   //! Next to iterate over field value
   // if value is last one behaviour is undefined
   // O(1*) - armotized constant - seems enough
-  constexpr Int NextFieldValue(Int value) const {
+  constexpr inline Int NextFieldValue(Int value) const {
     ++value;
     // here I use property
     // that correct field value will not change in this table 
@@ -214,12 +214,12 @@ class LogBasedField {
 
   //! Last to iterate over field values
   // I hope it will be calculated during compilation
-  constexpr Int LastFieldValue() const {
+  constexpr inline Int LastFieldValue() const {
     return CalcMask() * (kFieldBase - 1);
   }
 
  private:
-  constexpr static int GetBitesPerSymbol() {
+  constexpr static inline int GetBitesPerSymbol() {
     int bits_per_symbol = 1;
     while ((1 << bits_per_symbol) < kFieldBase) {
       ++bits_per_symbol;
@@ -227,7 +227,7 @@ class LogBasedField {
     return bits_per_symbol + 1;
   }
 
-  constexpr static Int CalcMask() {
+  constexpr static inline Int CalcMask() {
     Int result = 1;
     for (uint32_t i = 1; i < kFieldPower; ++i) {
       result = (result << kBitsPerSymbol) + 1;
@@ -235,8 +235,8 @@ class LogBasedField {
     return result;
   }
 
-  constexpr static int kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
-  constexpr static int kBitsPerSymbol = GetBitesPerSymbol();
+  constexpr static inline int kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+  constexpr static inline int kBitsPerSymbol = GetBitesPerSymbol();
 
   static_assert(kBitsPerSymbol * kFieldPower <= sizeof(Int) * CHAR_BIT,
                 "Integer type too small for this field");
@@ -268,7 +268,7 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
   using Value = Int;
 
  public:
-  constexpr LogBasedField() {
+  constexpr inline LogBasedField() {
     // Simple version of above
     Int generator = kFieldGenerator[0];
     Int alpha = 1;
@@ -291,34 +291,34 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     }
   }
 
-  constexpr Int Zero() const {
+  constexpr inline Int Zero() const {
     return Int{0};
   }
 
-  constexpr Int One() const {
+  constexpr inline Int One() const {
     return Int{1};
   }
 
-  constexpr Int Add(Int first, Int second) const {
+  constexpr inline Int Add(Int first, Int second) const {
     return first ^ second;
   }
 
-  constexpr Int Sub(Int first, Int second) const {
+  constexpr inline Int Sub(Int first, Int second) const {
     return first ^ second;
   }
 
-  constexpr Int Negative(Int value) const {
+  constexpr inline Int Negative(Int value) const {
     return value;
   }
 
-  constexpr Int Multiply(Int first, Int second) const {
+  constexpr inline Int Multiply(Int first, Int second) const {
     if (first == 0 || second == 0) {
       return 0;
     }
     return log_to_poly_[poly_to_log_[first] + poly_to_log_[second]];
   }
 
-  constexpr Int Divide(Int first, Int second) const {
+  constexpr inline Int Divide(Int first, Int second) const {
     if (first == 0) {
       return 0;
     }
@@ -327,7 +327,7 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
   }
 
   template <typename Power>
-  constexpr Int Pow(Int base, Power power) const {
+  constexpr inline Int Pow(Int base, Power power) const {
     if (base == 0) {
       return 0;
     }
@@ -335,43 +335,43 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     return log_to_poly_[power * base % (kFieldSize - 1)];
   }
 
-  constexpr Int Inverse(Int value) const {
+  constexpr inline Int Inverse(Int value) const {
     if (value == 1) {
       return value;
     }
     return log_to_poly_[kFieldSize - 1 - poly_to_log_[value]];
   }
 
-  constexpr Int Log(Int value) const {
+  constexpr inline Int Log(Int value) const {
     return poly_to_log_[value];
   }
 
-  constexpr static uint32_t FieldBase() {
+  constexpr static inline uint32_t FieldBase() {
     return 2;
   }
 
-  constexpr static uint32_t FieldPower() {
+  constexpr static inline uint32_t FieldPower() {
     return kFieldPower;
   }
 
-  constexpr Int FieldValueFromConstant(Int value) const {
+  constexpr inline Int FieldValueFromConstant(Int value) const {
     return value & 1;
   }
 
-  constexpr Int FirstFieldValue() const {
+  constexpr inline Int FirstFieldValue() const {
     return 0;
   }
 
-  constexpr Int NextFieldValue(Int value) const {
+  constexpr inline Int NextFieldValue(Int value) const {
     return ++value;
   }
 
-  constexpr Int LastFieldValue() const {
+  constexpr inline Int LastFieldValue() const {
     return kFieldSize - 1;
   }
 
  private:
-  constexpr static uint32_t kFieldSize = 1u << kFieldPower;
+  constexpr static inline uint32_t kFieldSize = 1u << kFieldPower;
   // can it be done constexpr since we have constexpr constructor?
   std::array<Int, 2 * kFieldSize> log_to_poly_{};
   std::array<Int, kFieldSize> poly_to_log_{};

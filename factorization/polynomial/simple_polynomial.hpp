@@ -40,11 +40,11 @@ class SimplePolynomial {
   using Value = typename Element::Value;
 
  public:
-  SimplePolynomial() = default;
+ inline SimplePolynomial() = default;
 
   // TODO: replace this constructor with better one for convenience
   template <typename T>
-  SimplePolynomial(const std::vector<T>& elements) {
+  inline SimplePolynomial(const std::vector<T>& elements) {
     static_assert(std::constructible_from<Value, T>);
     data_.reserve(elements.size());
     for (const auto& element : elements) {
@@ -53,31 +53,31 @@ class SimplePolynomial {
     RemoveLeadingZeros();
   }
 
-  SimplePolynomial(const std::vector<Element>& elements) 
+  inline SimplePolynomial(const std::vector<Element>& elements) 
       : data_(elements) {
     RemoveLeadingZeros();
   }
 
-  SimplePolynomial(std::vector<Element>&& elements) 
+  inline SimplePolynomial(std::vector<Element>&& elements) 
       : data_(std::move(elements)) {
     RemoveLeadingZeros();
   }
 
-  SimplePolynomial(const Element& element) : data_(1, element) {
+  inline SimplePolynomial(const Element& element) : data_(1, element) {
     RemoveLeadingZeros();  // element may be equal to zero
   }
 
-  SimplePolynomial(const SimplePolynomial&) = default;
-  SimplePolynomial(SimplePolynomial&&) = default;
+  inline SimplePolynomial(const SimplePolynomial&) = default;
+  inline SimplePolynomial(SimplePolynomial&&) = default;
 
-  SimplePolynomial& operator=(const SimplePolynomial&) = default;
-  SimplePolynomial& operator=(SimplePolynomial&&) = default;
+  inline SimplePolynomial& operator=(const SimplePolynomial&) = default;
+  inline SimplePolynomial& operator=(SimplePolynomial&&) = default;
 
-  ~SimplePolynomial() = default;
+  inline ~SimplePolynomial() = default;
 
-  bool operator==(const SimplePolynomial&) const = default;
+  inline bool operator==(const SimplePolynomial&) const = default;
 
-  bool operator<(const SimplePolynomial& other) const {
+  inline bool operator<(const SimplePolynomial& other) const {
     if (data_.size() != other.data_.size()) {
       return data_.size() < other.data_.size();
     }
@@ -89,7 +89,7 @@ class SimplePolynomial {
     return false;  // equal
   }
 
-  SimplePolynomial& operator+=(const SimplePolynomial& other) {
+  inline SimplePolynomial& operator+=(const SimplePolynomial& other) {
     if (data_.size() < other.data_.size()) {
       data_.resize(other.data_.size(), Element::Zero());
     }
@@ -100,7 +100,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator+=(const Element& element) {
+  inline SimplePolynomial& operator+=(const Element& element) {
     if (data_.empty()) {
       data_.emplace_back(element);
     } else {
@@ -110,7 +110,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator-=(const SimplePolynomial& other) {
+  inline SimplePolynomial& operator-=(const SimplePolynomial& other) {
     if (data_.size() < other.data_.size()) {
       data_.resize(other.data_.size(), Element::Zero());
     }
@@ -121,7 +121,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator-=(const Element& element) {
+  inline SimplePolynomial& operator-=(const Element& element) {
     if (data_.empty()) {
       data_.emplace_back(element);
     }
@@ -132,7 +132,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator*=(const SimplePolynomial& other) {
+  inline SimplePolynomial& operator*=(const SimplePolynomial& other) {
     // check if result is zero
     if (data_.empty() || other.data_.empty()) {
       data_.clear();
@@ -165,7 +165,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator*=(const Element& element) {
+  inline SimplePolynomial& operator*=(const Element& element) {
     // check if result is zero
     if (element == Element::Zero()) {
       data_.clear();
@@ -177,7 +177,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator/=(const SimplePolynomial& other) {
+  inline SimplePolynomial& operator/=(const SimplePolynomial& other) {
     // result is zero
     if (data_.size() < other.data_.size()) {
       data_.clear();
@@ -217,7 +217,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator/=(const Element& element) {
+  inline SimplePolynomial& operator/=(const Element& element) {
     // Divide by zero is UB
     auto inverse = element.Inverse();
     for (auto& value : data_) {
@@ -226,7 +226,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial& operator%=(const SimplePolynomial& other) {
+  inline SimplePolynomial& operator%=(const SimplePolynomial& other) {
     // nothing to do
     if (data_.size() < other.data_.size()) {
       return *this;
@@ -252,7 +252,7 @@ class SimplePolynomial {
     return *this;
   }
 
-  SimplePolynomial operator-() const {
+  inline SimplePolynomial operator-() const {
     std::vector<Element> result = data_;
     for (auto& value : result) {
       value = -value;
@@ -260,15 +260,15 @@ class SimplePolynomial {
     return SimplePolynomial(std::move(result));
   }
 
-  std::vector<Element> GetElements() const {
+  inline std::vector<Element> GetElements() const {
     return data_;
   }
 
-  size_t Size() const {
+  inline size_t Size() const {
     return data_.size();
   }
 
-  SimplePolynomial Derivative() const {
+  inline SimplePolynomial Derivative() const {
     if (data_.size() <= 1) {
       return SimplePolynomial();
     }
@@ -280,7 +280,7 @@ class SimplePolynomial {
   }
 
   // Makes polynomial monic
-  void MakeMonic() {
+  inline void MakeMonic() {
     if (data_.empty()) {
       return;
     }
@@ -293,16 +293,16 @@ class SimplePolynomial {
     }
   }
 
-  bool IsZero() const {
+  inline bool IsZero() const {
     return data_.size() == 0;
   }
 
-  bool IsOne() const {
+  inline bool IsOne() const {
     return data_.size() == 1 && data_[0] == Element::One();
   }
 
  private:
-  void RemoveLeadingZeros() {
+  inline void RemoveLeadingZeros() {
     size_t new_size = data_.size();
     while (new_size > 0 && data_[new_size - 1] == Element::Zero()) {
       --new_size;
@@ -314,74 +314,74 @@ class SimplePolynomial {
 };
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator+(SimplePolynomial<Element> first,
-                                    const SimplePolynomial<Element>& second) {
+inline SimplePolynomial<Element> operator+(SimplePolynomial<Element> first,
+                                           const SimplePolynomial<Element>& second) {
   return first += second;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator+(SimplePolynomial<Element> poly,
+inline SimplePolynomial<Element> operator+(SimplePolynomial<Element> poly,
                                     Element value) {
   return poly += value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator+(Element value,
+inline SimplePolynomial<Element> operator+(Element value,
                                     SimplePolynomial<Element> poly) {
   return poly += value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator-(SimplePolynomial<Element> first,
+inline SimplePolynomial<Element> operator-(SimplePolynomial<Element> first,
                                     const SimplePolynomial<Element>& second) {
   return first -= second;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator-(SimplePolynomial<Element> poly,
+inline SimplePolynomial<Element> operator-(SimplePolynomial<Element> poly,
                                     Element value) {
   return poly -= value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator-(Element value,
+inline SimplePolynomial<Element> operator-(Element value,
                                     const SimplePolynomial<Element>& poly) {
   return -poly += value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator*(SimplePolynomial<Element> first,
-                                    const SimplePolynomial<Element>& second) {
+inline SimplePolynomial<Element> operator*(SimplePolynomial<Element> first,
+                                           const SimplePolynomial<Element>& second) {
   return first *= second;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator*(SimplePolynomial<Element> poly,
+inline SimplePolynomial<Element> operator*(SimplePolynomial<Element> poly,
                                     Element value) {
   return poly *= value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator*(Element value,
+inline SimplePolynomial<Element> operator*(Element value,
                                     SimplePolynomial<Element> poly) {
   return poly *= value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator/(SimplePolynomial<Element> first,
+inline SimplePolynomial<Element> operator/(SimplePolynomial<Element> first,
                                     const SimplePolynomial<Element>& second) {
   return first /= second;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator/(SimplePolynomial<Element> poly,
-                                    Element value) {
+inline SimplePolynomial<Element> operator/(SimplePolynomial<Element> poly,
+                                           Element value) {
   return poly /= value;
 }
 
 template <concepts::GaloisFieldElement Element>
-SimplePolynomial<Element> operator%(SimplePolynomial<Element> first,
-                                    const SimplePolynomial<Element>& second) {
+inline SimplePolynomial<Element> operator%(SimplePolynomial<Element> first,
+                                           const SimplePolynomial<Element>& second) {
   return first %= second;
 }
 

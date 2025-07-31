@@ -27,13 +27,13 @@ namespace factorization::utils {
 template <class Iterator>
 class IteratorRange {
  public:
-  IteratorRange(Iterator begin, Iterator end) : begin_(begin), end_(end) {
+ inline IteratorRange(Iterator begin, Iterator end) : begin_(begin), end_(end) {
   }
 
-  Iterator begin() const {  // NOLINT
+  inline Iterator begin() const {  // NOLINT
     return begin_;
   }
-  Iterator end() const {  // NOLINT
+  inline Iterator end() const {  // NOLINT
     return end_;
   }
 
@@ -43,7 +43,7 @@ class IteratorRange {
 };
 
 template <typename Value, typename Power = Value>
-constexpr Value BinPow(Value base, Power power) {
+constexpr inline Value BinPow(Value base, Power power) {
   Value result{1};
   while (power > 0) {
     if (power % 2 != 0) {
