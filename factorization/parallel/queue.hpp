@@ -43,8 +43,11 @@ class TasksBlockingQueue {
 
   ITask* TryPop() {
     std::unique_lock lock(critical_);
-    while (!tasks_.empty() && !queue_is_closed_) {
+    while (tasks_.empty() && !queue_is_closed_) {
       something_happened_.wait(lock);
+    }
+    if (tasks_.empty()) {
+      return nullptr;
     }
     ITask* result = tasks_.front();
     tasks_.pop_front();
