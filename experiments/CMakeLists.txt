@@ -1,0 +1,2 @@
+add_executable(run_experiment_1 experiment_1/experiment.cpp)
+target_link_libraries(run_experiment_1 PRIVATE factorization)

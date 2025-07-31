@@ -10,3 +10,4 @@ add_library(factorization INTERFACE)
 target_include_directories(factorization INTERFACE .)
 
 add_subdirectory(tests)
+add_subdirectory(experiments)
