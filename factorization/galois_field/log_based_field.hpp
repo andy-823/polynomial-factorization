@@ -39,8 +39,17 @@ namespace factorization::galois_field {
  *
  *  Operates over elements written in polynomial form.
  *  All data is located on stack, can be constexpr.
- *  Has linear construction complexity, takes linear amount of space. 
- *  Most of operations have constant complexity.
+ *  For fields with base 2 consumes O(n) space where n is field size
+ *  For fields with other base consumes
+ *    0(n * (2c)^k)
+ *  where
+ *    n is field size
+ *    k is field power
+ *    c is ratio of lowest power of 2 greater than field base to field base
+ *  For example with field base 3 and power 2, it consumes
+ *    O(n * (2 * 4 / 3)^2)
+ *  Still better than use of add and multiply tables
+ *  Operations have constant complexity.
  */
 template <uint32_t kFieldBase,
           uint32_t kFieldPower,
@@ -217,7 +226,7 @@ class LogBasedField {
     }
     return bits_per_symbol + 1;
   }
-  
+
   constexpr static Int CalcMask() {
     Int result = 1;
     for (uint32_t i = 1; i < kFieldPower; ++i) {
