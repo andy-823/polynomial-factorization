@@ -60,7 +60,8 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
   runtime.Start();
 
   out << kFieldSize << "\t";
-  for (size_t size = params.min_value; size < params.max_value; size += params.step) {
+  for (size_t size = params.min_value; size <= params.max_value; size += params.step) {
+    std::atomic<size_t> count{0};
     wg.Add(params.test_runs);
     solver::BerlekampExperiment<Poly> solver;
     for (size_t test = 0; test < params.test_runs; ++test) {
@@ -69,14 +70,22 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
         local_gen.seed(gen());
 
         Poly poly = GenPoly<Poly>(local_gen, size);
-        solver.Factorize(poly);
+        auto factors = solver.Factorize(poly);
+        size_t cnt = 0;
+        for (const auto& factor : factors) {
+          cnt += factor.power;
+        }
+        count.fetch_add(cnt);
         wg.Done();
       });
     }
     wg.Wait();
-    double result = static_cast<double>(solver.GetMetricValue());
-    result /= params.test_runs * size;
-    out << std::setprecision(2) << std::fixed << result << "\t";
+    double avg_dividors = static_cast<double>(count.load()) / params.test_runs;
+    double avg_metrics = static_cast<double>(solver.GetMetricValue());
+    avg_metrics /= params.test_runs * size;
+
+    out << std::setprecision(2) << std::fixed << avg_metrics << " ";
+    out << std::setprecision(2) << std::fixed << avg_dividors << "\t";
   }
   out << "\n";
 
@@ -94,12 +103,13 @@ int main() {
   using GF2_6 = galois_field::LogBasedField<2, 6, {1, 1, 0, 0, 0, 0, 1}>;
   using GF2_7 = galois_field::LogBasedField<2, 7, {1, 1, 0, 0, 0, 0, 0, 1}>;
   using GF2_8 = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
+  using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
 
-  constexpr int kRuns = 10000;
+  constexpr int kRuns = 100000;
   constexpr int kMin = 10;
-  constexpr int kMax = 100;
-  constexpr int kStep = 2;
-  constexpr int kThreads = 20;
+  constexpr int kMax = 150;
+  constexpr int kStep = 5;
+  constexpr int kThreads = 18; //20;
 
   ExperimentParams params;
   params.min_value = kMin;
@@ -117,8 +127,8 @@ int main() {
   std::ostream& out = out_file; //std::cout;
 
   out << "\t";
-  for (size_t i = kMin; i < kMax; i += kStep) {
-    out << i << "\t";
+  for (size_t i = kMin; i <= kMax; i += kStep) {
+    out << i << "\t\t";
   }
   out << "\n";
 
@@ -133,6 +143,7 @@ int main() {
   RunExperiment<GF2_6>(out, params, gen);
   RunExperiment<GF2_7>(out, params, gen);
   RunExperiment<GF2_8>(out, params, gen);
+  RunExperiment<GF2_9>(out, params, gen);
 
   out_file.close();
 

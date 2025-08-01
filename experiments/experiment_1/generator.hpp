@@ -25,17 +25,13 @@ Element GenElement(RandomGen& gen) {
 template <concepts::Polynom Poly, typename RandomGen>
 Poly GenPoly(RandomGen& gen, size_t size) {
   using Element = typename Poly::Element;
-
-  do {
-    std::vector<Element> elements(size);
-    for (auto& element : elements) {
-      element = GenElement<Element>(gen);
-    }
-    Poly result(std::move(elements));
-    if (!result.IsZero()) {
-      return result;
-    }
-  } while (true);
+  
+  std::vector<Element> elements(size + 1);
+  for (auto& element : elements) {
+    element = GenElement<Element>(gen);
+  }
+  elements.back() = Element::One();
+  return Poly(std::move(elements));
 }
 
 }  // namespace factoriation
