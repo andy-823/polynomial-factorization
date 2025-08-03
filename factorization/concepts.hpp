@@ -55,7 +55,7 @@ concept GaloisField = requires (Field field, Field::Value value) {
 
 template <typename Element>
 concept GaloisFieldElement = requires (Element element, Element::Value value) {
-  std::copy_constructible<Element>;
+  requires std::copy_constructible<Element>;
   { element = element } -> std::same_as<Element&>;
 
   { Element::One() } -> std::same_as<Element>;
@@ -90,11 +90,11 @@ template <typename Poly>
 concept Polynom = requires(Poly poly, Poly::Element value) {
   // This requirement is needed since sometimes we need
   // to perform arithmetic outside of polynom class
-  GaloisFieldElement<typename Poly::Element>;
+  requires GaloisFieldElement<typename Poly::Element>;
 
   // TODO: make construction from range
-  std::constructible_from<Poly, std::vector<typename Poly::Element>>;
-  std::copy_constructible<Poly>;
+  requires std::constructible_from<Poly, std::vector<typename Poly::Element>>;
+  requires std::copy_constructible<Poly>;
   { poly = poly } -> std::same_as<Poly&>;
 
   // need to put it into std::set or simply compare
