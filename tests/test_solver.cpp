@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <map>
 #include <random>
 
@@ -16,7 +17,7 @@ using namespace factorization;  // NOLINT
 TEST_CASE("Berlekamp") {
   std::mt19937 random_gen;
 
-  SECTION("RandomPowers") {
+  SECTION("RandomPowers1") {
     using GaloisField = galois_field::LogBasedField<2, 1, {1, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Poly = polynomial::SimplePolynomial<Element>;
@@ -45,6 +46,50 @@ TEST_CASE("Berlekamp") {
       static_assert(utils::BinPow(2, 6) == 64);
       for (const auto& poly : polynoms) {
         int power = budget != 0 ? random_gen() % budget : 0;
+        budget -= power;
+        if (power != 0) {
+          expected[poly] = power;
+          auto tmp = utils::BinPow(poly, power);
+          factorizing *= utils::BinPow(poly, power);
+        }
+      }
+
+      auto factors = solver.Factorize(factorizing);
+      for (const auto& factor : factors) {
+        REQUIRE(factor.power == expected[factor.factor]);
+      }
+    }
+  }
+
+  SECTION("RandomPowers2") {
+    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Poly = polynomial::SimplePolynomial<Element>;
+
+    constexpr int kBudget = 100;
+    constexpr int kTestCount = 1000;
+
+    std::vector<Poly> polynoms = {
+      Poly({0, 1}),
+      Poly({1, 1}),
+      Poly({2, 1}),
+      Poly({3, 1}),
+      Poly({4, 1}),
+      Poly({5, 1}),
+      Poly({6, 1}),
+      Poly({7, 1}),
+    };
+
+    solver::Berlekamp<Poly> solver;
+
+    for (int test = 0; test < kTestCount; ++test) {
+      std::map<Poly, int> expected;
+      int budget = kBudget;
+      Poly factorizing(Element::One());
+
+      static_assert(utils::BinPow(2, 6) == 64);
+      for (const auto& poly : polynoms) {
+        int power = std::min(uint64_t{10}, random_gen() % (budget + 1));
         budget -= power;
         if (power != 0) {
           expected[poly] = power;
