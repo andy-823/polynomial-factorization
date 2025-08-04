@@ -124,6 +124,9 @@ class BerlekampExperiment {
     new_factors.reserve(basis.size());
 
     for (const auto& factorizing : basis) {
+      if (factorizing.Size() == 1) {
+        continue;
+      }
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
           Polynom new_factor = Gcd(factor, factorizing - c);
@@ -142,7 +145,6 @@ class BerlekampExperiment {
       factors.swap(new_factors);
       new_factors.clear();
     }
-    // this place is actually unreachable
     return factors;
   }
 

@@ -120,6 +120,9 @@ class Berlekamp {
     new_factors.reserve(basis.size());
 
     for (const auto& factorizing : basis) {
+      if (factorizing.Size() == 1) {  // constant
+        continue;
+      }
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
           Polynom new_factor = Gcd(factor, factorizing - c);
@@ -137,7 +140,6 @@ class Berlekamp {
       factors.swap(new_factors);
       new_factors.clear();
     }
-    // this place is actually unreachable
     return factors;
   }
 
