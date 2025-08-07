@@ -3,6 +3,7 @@
 #include <fstream>
 #include <mutex>
 #include <random>
+#include <string>
 
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
@@ -61,7 +62,6 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
 
   out << kFieldSize << "\t";
   for (size_t size = params.min_value; size <= params.max_value; size += params.step) {
-    std::atomic<size_t> count{0};
     wg.Add(params.test_runs);
     solver::BerlekampExperiment<Poly> solver;
     for (size_t test = 0; test < params.test_runs; ++test) {
@@ -71,20 +71,16 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
 
         Poly poly = GenPoly<Poly>(local_gen, size);
         auto factors = solver.Factorize(poly);
-        size_t cnt = 0;
-        for (const auto& factor : factors) {
-          cnt += factor.power;
-        }
-        count.fetch_add(cnt);
         wg.Done();
       });
     }
     wg.Wait();
-    double avg_dividors = static_cast<double>(count.load()) / params.test_runs;
-    double avg_metrics = static_cast<double>(solver.GetMetricValue());
-    avg_metrics /= params.test_runs * size;
+    double avg_divisions = static_cast<double>(solver.GetDivisionsMetricValue());
+    double avg_dividors = static_cast<double>(solver.GetDividorsMetricValue());
+    avg_divisions /= params.test_runs * (size + 1);
+    avg_dividors /= params.test_runs * (size + 1);
 
-    out << std::setprecision(2) << std::fixed << avg_metrics << " ";
+    out << std::setprecision(2) << std::fixed << avg_divisions << " ";
     out << std::setprecision(2) << std::fixed << avg_dividors << "\t";
   }
   out << "\n";
@@ -105,11 +101,12 @@ int main() {
   using GF2_8 = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
   using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
 
-  constexpr int kRuns = 100000;
+  constexpr int kRuns = 100'000;
   constexpr int kMin = 10;
   constexpr int kMax = 150;
   constexpr int kStep = 5;
   constexpr int kThreads = 18; //20;
+  const std::string path{"../../experiments/experiment_1/exp_1_out.txt"};
 
   ExperimentParams params;
   params.min_value = kMin;
@@ -119,7 +116,7 @@ int main() {
   params.test_runs = kRuns;
 
   std::ofstream out_file;
-  out_file.open("/home/udoo/polynomial-factorization/exp_1_out.txt");
+  out_file.open(path);
   if (!out_file.is_open()) {
     std::cout << "bad\n";
     return 0;
@@ -128,7 +125,7 @@ int main() {
 
   out << "\t";
   for (size_t i = kMin; i <= kMax; i += kStep) {
-    out << i << "\t\t";
+    out << i << "\t\t\t";
   }
   out << "\n";
 

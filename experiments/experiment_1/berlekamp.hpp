@@ -52,8 +52,12 @@ class BerlekampExperiment {
     return result;
   }
 
-  int64_t GetMetricValue() const {
-    return metric_.load();
+  int64_t GetDivisionsMetricValue() const {
+    return divisions_metric_.load();
+  }
+
+  int64_t GetDividorsMetricValue() const {
+    return dividors_metric_.load();
   }
 
  private:
@@ -113,6 +117,7 @@ class BerlekampExperiment {
     if (basis.size() == 1) {
       return {polynom};
     }
+    dividors_metric_.fetch_add((basis.size() - 1) * polynom.Size());
     // this is supposed to be range
     // but inside it can be everything - better to get it here
     const auto field_elements = Element::AllFieldElements();
@@ -136,7 +141,7 @@ class BerlekampExperiment {
           }
         }
       }
-      metric_.fetch_add(polynom.Size());
+      divisions_metric_.fetch_add(polynom.Size());
       // it means that we have already found all necessary factors
       if (new_factors.size() == basis.size()) {
         return new_factors;
@@ -308,7 +313,9 @@ class BerlekampExperiment {
   }
 
  private:
-  std::atomic<int64_t> metric_{0};
+  std::atomic<int64_t> divisions_metric_{0};
+  std::atomic<int64_t> dividors_metric_{0};
+
 };
 
 }  // namespace factorization::solver
