@@ -74,61 +74,61 @@ void RunTests(const std::vector<Test<Value>>& tests) {
 
 TEST_CASE("FieldElementWrapper") {
   std::vector<Test<int64_t>> tests = {
-    {QueryType::kMultiply, 0, 0, 0},
-    {QueryType::kMultiply, 0, 1, 0},
-    {QueryType::kMultiply, 0, 2, 0},
-    {QueryType::kMultiply, 0, 4, 0},
-    {QueryType::kMultiply, 0, 5, 0},
-    {QueryType::kMultiply, 0, 6, 0},
-    {QueryType::kMultiply, 0, 8, 0},
-    {QueryType::kMultiply, 0, 9, 0},
-    {QueryType::kMultiply, 0, 10, 0},
+      {QueryType::kMultiply, 0, 0, 0},
+      {QueryType::kMultiply, 0, 1, 0},
+      {QueryType::kMultiply, 0, 2, 0},
+      {QueryType::kMultiply, 0, 7, 0},
+      {QueryType::kMultiply, 0, 7, 0},
+      {QueryType::kMultiply, 0, 8, 0},
+      {QueryType::kMultiply, 0, 12, 0},
+      {QueryType::kMultiply, 0, 13, 0},
+      {QueryType::kMultiply, 0, 14, 0},
 
-    {QueryType::kMultiply, 1, 0, 0},
-    {QueryType::kMultiply, 1, 1, 1},
-    {QueryType::kMultiply, 1, 2, 2},
-    {QueryType::kMultiply, 1, 8, 8},
-    {QueryType::kMultiply, 1, 9, 9},
-    {QueryType::kMultiply, 1, 10, 10},
-    {QueryType::kMultiply, 1, 16, 16},
-    {QueryType::kMultiply, 1, 17, 17},
-    {QueryType::kMultiply, 1, 18, 18},
+      {QueryType::kMultiply, 1, 0, 0},
+      {QueryType::kMultiply, 1, 1, 1},
+      {QueryType::kMultiply, 1, 2, 2},
+      {QueryType::kMultiply, 1, 6, 6},
+      {QueryType::kMultiply, 1, 7, 7},
+      {QueryType::kMultiply, 1, 8, 8},
+      {QueryType::kMultiply, 1, 12, 12},
+      {QueryType::kMultiply, 1, 13, 13},
+      {QueryType::kMultiply, 1, 14, 14},
 
-    {QueryType::kMultiply, 2, 0, 0},
-    {QueryType::kMultiply, 2, 1, 2},
-    {QueryType::kMultiply, 2, 2, 1},
-    {QueryType::kMultiply, 2, 8, 16},
-    {QueryType::kMultiply, 2, 9, 18},
-    {QueryType::kMultiply, 2, 10, 17},
-    {QueryType::kMultiply, 2, 16, 8},
-    {QueryType::kMultiply, 2, 17, 10},
-    {QueryType::kMultiply, 2, 18, 9},
+      {QueryType::kMultiply, 2, 0, 0},
+      {QueryType::kMultiply, 2, 1, 2},
+      {QueryType::kMultiply, 2, 2, 1},
+      {QueryType::kMultiply, 2, 6, 12},
+      {QueryType::kMultiply, 2, 7, 14},
+      {QueryType::kMultiply, 2, 8, 13},
+      {QueryType::kMultiply, 2, 12, 6},
+      {QueryType::kMultiply, 2, 13, 8},
+      {QueryType::kMultiply, 2, 14, 7},
 
-    {QueryType::kMultiply, 8, 0, 0},
-    {QueryType::kMultiply, 8, 1, 8},
-    {QueryType::kMultiply, 8, 2, 16},
-    // x * x = x + 1
-    {QueryType::kMultiply, 8, 8, 9},
-    // x * (x + 1) = x^2 + x = 2x + 1
-    {QueryType::kMultiply, 8, 9, 17},
-    // x * (x + 2) = x^2 + 2x = 1
-    {QueryType::kMultiply, 8, 10, 1},
-    // x * (2x) = 2x^2 = 2x + 2
-    {QueryType::kMultiply, 8, 16, 18},
-    // x * (2x + 1) = 2x + 2 + x = 2
-    {QueryType::kMultiply, 8, 17, 2},
-    // x * (2x + 2) = 2x + 2 + 2x = x + 2
-    {QueryType::kMultiply, 8, 18, 10},
+      {QueryType::kMultiply, 6, 0, 0},
+      {QueryType::kMultiply, 6, 1, 6},
+      {QueryType::kMultiply, 6, 2, 12},
+      // x * x = x + 1
+      {QueryType::kMultiply, 6, 6, 7},
+      // x * (x + 1) = x^2 + x = 2x + 1
+      {QueryType::kMultiply, 6, 7, 13},
+      // x * (x + 2) = x^2 + 2x = 1
+      {QueryType::kMultiply, 6, 8, 1},
+      // x * (2x) = 2x^2 = 2x + 2
+      {QueryType::kMultiply, 6, 12, 14},
+      // x * (2x + 1) = 2x + 2 + x = 2
+      {QueryType::kMultiply, 6, 13, 2},
+      // x * (2x + 2) = 2x + 2 + 2x = x + 2
+      {QueryType::kMultiply, 6, 14, 8},
 
-    {QueryType::kAdd, 2, 0, 2},
-    {QueryType::kAdd, 8, 1, 9},
-    {QueryType::kAdd, 10, 2, 9},
-    {QueryType::kAdd, 17, 8, 1},
-    {QueryType::kAdd, 18, 9, 0},
-    {QueryType::kAdd, 9, 10, 16},
-    {QueryType::kAdd, 2, 16, 18},
-    {QueryType::kAdd, 8, 17, 1},
-    {QueryType::kAdd, 1, 18, 16},
+      {QueryType::kAdd, 2, 0, 2},
+      {QueryType::kAdd, 6, 1, 7},
+      {QueryType::kAdd, 8, 2, 7},
+      {QueryType::kAdd, 13, 6, 1},
+      {QueryType::kAdd, 14, 7, 0},
+      {QueryType::kAdd, 6, 8, 14},
+      {QueryType::kAdd, 2, 12, 14},
+      {QueryType::kAdd, 6, 13, 1},
+      {QueryType::kAdd, 1, 14, 12},
   };
 
   // x^2 = x + 1
@@ -140,8 +140,8 @@ TEST_CASE("FieldElementWrapper") {
   STATIC_REQUIRE(Element::FieldPower() == 2);
 
   std::vector<Int> elements({
-      Int{0}, Int{1}, Int{2}, Int{8}, Int{9},
-      Int{10}, Int{16}, Int{17}, Int{18}
+      Int{0}, Int{1}, Int{2}, Int{6}, Int{7},
+      Int{8}, Int{12}, Int{13}, Int{14}
     });
   CHECK_THAT(Element::AllFieldElements(), RangeEquals(elements));
 
