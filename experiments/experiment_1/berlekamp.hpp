@@ -23,7 +23,7 @@
 #pragma once
 
 #include <algorithm>
-#include <atomic>
+#include <cstdint>
 #include <map>
 #include <vector>
 
@@ -33,9 +33,10 @@
 
 namespace factorization::solver {
 
-template <concepts::Polynom Polynom>
+template <concepts::Polynom Polynom, bool kReduceDivisions = true>
 class BerlekampExperiment {
   using Element = typename Polynom::Element;
+  static_assert(Element::kCounting == true, "Only counting element is allowed here");
 
  public:
   inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) {
@@ -52,16 +53,25 @@ class BerlekampExperiment {
     return result;
   }
 
-  int64_t GetDivisionsMetricValue() const {
-    return divisions_metric_.load();
+  uint64_t GetGaussActions() const {
+    return gauss_actions_;
   }
 
-  int64_t GetDividorsMetricValue() const {
-    return dividors_metric_.load();
+  uint64_t GetDivisionsActions() const {
+    return divisions_actions_;
+  }
+
+  uint64_t GetTotalActions() const {
+    return total_actions_;
   }
 
  private:
   inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) {
+    Element::ResetActions();
+    gauss_actions_ = 0;
+    divisions_actions_ = 0;
+    total_actions_ = 0;
+
     std::map<Polynom, int> result;
     while (!polynom.IsOne()) {
       Polynom derivative = polynom.Derivative();
@@ -81,6 +91,7 @@ class BerlekampExperiment {
       }
       polynom = gcd;
     }
+    total_actions_ = Element::GetActions();
     return result;
   }
 
@@ -112,12 +123,15 @@ class BerlekampExperiment {
   // where f_1 ... f_k are irreducible
   // return vector because of no repeating factors
   inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) {
+    
+    uint64_t before_gauss = Element::GetActions();
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
+    gauss_actions_ = Element::GetActions() - before_gauss;
+
     // that means polynom is irreducible
     if (basis.size() == 1) {
       return {polynom};
     }
-    dividors_metric_.fetch_add((basis.size() - 1) * polynom.Size());
     // this is supposed to be range
     // but inside it can be everything - better to get it here
     const auto field_elements = Element::AllFieldElements();
@@ -128,6 +142,7 @@ class BerlekampExperiment {
     std::vector<Polynom> new_factors;
     new_factors.reserve(basis.size());
 
+    uint64_t before_divisions = Element::GetActions();
     for (const auto& factorizing : basis) {
       if (factorizing.Size() == 1) {
         continue;
@@ -139,17 +154,20 @@ class BerlekampExperiment {
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
           }
+          // it means that we have already found all necessary factors
+          if constexpr (kReduceDivisions == true) {
+            if (new_factors.size() == basis.size()) {
+              divisions_actions_ = Element::GetActions() - before_divisions;
+              return new_factors;
+            }
+          }
         }
-      }
-      divisions_metric_.fetch_add(polynom.Size());
-      // it means that we have already found all necessary factors
-      if (new_factors.size() == basis.size()) {
-        return new_factors;
       }
       // again: less dynamic allocations
       factors.swap(new_factors);
       new_factors.clear();
     }
+    divisions_actions_ = Element::GetActions() - before_divisions;
     return factors;
   }
 
@@ -313,9 +331,9 @@ class BerlekampExperiment {
   }
 
  private:
-  std::atomic<int64_t> divisions_metric_{0};
-  std::atomic<int64_t> dividors_metric_{0};
-
+  uint64_t gauss_actions_ = 0;
+  uint64_t divisions_actions_ = 0;
+  uint64_t total_actions_ = 0;
 };
 
 }  // namespace factorization::solver
