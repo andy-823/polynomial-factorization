@@ -54,58 +54,6 @@ class MultithreadRandomGen {
 };
 
 template <concepts::GaloisField Field, typename RandomGen>
-void RunDivisionsExperiment(std::ostream& out, const ExperimentParams& params, RandomGen& gen) {
-  using Element = galois_field::CountingFieldElement<Field>;
-  using Poly = polynomial::SimplePolynomial<Element>;
-
-  constexpr int kFieldSize = utils::BinPow(Field::FieldBase(), Field::FieldPower());
-
-  parallel::ThreadPool runtime(params.thread_count);
-  parallel::WaitGroup wg;
-  runtime.Start();
-
-  out << kFieldSize << "\t";
-  for (size_t size = params.min_value; size <= params.max_value; size += params.step) {
-    std::atomic<uint64_t> actions_simple{0};
-    std::atomic<uint64_t> actions_better{0};
-    std::atomic<uint64_t> gauss{0};
-
-
-    wg.Add(params.test_runs);
-    for (size_t test = 0; test < params.test_runs; ++test) {
-      parallel::SubmitTask(&runtime, [&]{    
-        solver::BerlekampExperiment<Poly, false> solver_simple;
-        solver::BerlekampExperiment<Poly, true> solver_better;
-
-        RandomGen local_gen;
-        local_gen.seed(gen());
-
-        Poly poly = GenPoly<Poly>(local_gen, size);
-        auto factors_simple = solver_simple.Factorize(poly);
-        auto factors_better = solver_better.Factorize(poly);
-        assert(factors_simple == factors_better);
-
-        actions_simple.fetch_add(solver_simple.GetDivisionsActions());
-        actions_better.fetch_add(solver_better.GetDivisionsActions());
-
-        wg.Done();
-      });
-    }
-    wg.Wait();
-    double avg_simple = static_cast<double>(actions_simple.load());
-    double avg_better = static_cast<double>(actions_better.load());
-    avg_simple /= params.test_runs;
-    avg_better /= params.test_runs;
-
-    out << std::setprecision(1) << std::fixed << avg_simple << " ";
-    out << std::setprecision(1) << std::fixed << avg_better << "\t";
-  }
-  out << "\n";
-
-  runtime.Stop();
-}
-
-template <concepts::GaloisField Field, typename RandomGen>
 void RunGaussExperiment(std::ostream& out, const ExperimentParams& params, RandomGen& gen) {
   using Element = galois_field::CountingFieldElement<Field>;
   using Poly = polynomial::SimplePolynomial<Element>;
@@ -136,17 +84,6 @@ void RunGaussExperiment(std::ostream& out, const ExperimentParams& params, Rando
         divisions.fetch_add(solver.GetDivisionsActions());
         gauss.fetch_add(solver.GetGaussActions());
         total.fetch_add(solver.GetTotalActions());
-
-        // auto check = solver::Berlekamp<Poly>().Factorize(poly);
-        // auto cmp = [](auto first, auto second) {
-        //   if (first.power != second.power) {
-        //     return first.power < second.power;
-        //   }
-        //   return first.factor < second.factor;
-        // };
-        // std::sort(factors.begin(), factors.end(), cmp);
-        // std::sort(check.begin(), check.end(), cmp);
-        // assert(check == factors);
 
         wg.Done();
       });
@@ -181,9 +118,9 @@ int main() {
   using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
 
 
-  constexpr int kRuns = 100; //10'000;
+  constexpr int kRuns = 10'000;
   constexpr int kMin = 25;
-  constexpr int kMax = 300; //400; //500;
+  constexpr int kMax = 400; //500;
   constexpr int kStep = 25;
   constexpr int kThreads = 12; //20;
   const std::string path{"../../experiments/experiment_2/exp_2_out.txt"};
@@ -211,16 +148,6 @@ int main() {
 
   MultithreadRandomGen<std::mt19937> gen;
   gen.seed(0);
-
-  // RunDivisionsExperiment<GF2_1>(out, params, gen);
-  // RunDivisionsExperiment<GF2_2>(out, params, gen);
-  // RunDivisionsExperiment<GF2_3>(out, params, gen);
-  // RunDivisionsExperiment<GF2_4>(out, params, gen);
-  // RunDivisionsExperiment<GF2_5>(out, params, gen);
-  // RunDivisionsExperiment<GF2_6>(out, params, gen);
-  // RunDivisionsExperiment<GF2_7>(out, params, gen);
-  // RunDivisionsExperiment<GF2_8>(out, params, gen);
-  // RunDivisionsExperiment<GF2_9>(out, params, gen);
 
   out << "\n";
   gen.seed(0);
