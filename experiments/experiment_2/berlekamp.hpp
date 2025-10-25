@@ -34,7 +34,7 @@
 
 namespace factorization::solver {
 
-template <concepts::Polynom Polynom, bool kReduceDivisions = true>
+template <concepts::Polynom Polynom>
 class BerlekampExperiment {
   using Element = typename Polynom::Element;
   static_assert(Element::kCounting == true, "Only counting element is allowed here");
@@ -231,11 +231,9 @@ class BerlekampExperiment {
             new_factors.emplace_back(std::move(new_factor));
           }
           // it means that we have already found all necessary factors
-          if constexpr (kReduceDivisions == true) {
-            if (new_factors.size() == basis.size()) {
-              divisions_actions_ = Element::GetActions() - before_divisions;
-              return new_factors;
-            }
+          if (new_factors.size() == basis.size()) {
+            divisions_actions_ = Element::GetActions() - before_divisions;
+            return new_factors;
           }
         }
       }
