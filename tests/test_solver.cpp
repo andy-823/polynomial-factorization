@@ -99,6 +99,7 @@ TEST_CASE("Berlekamp") {
       }
 
       auto factors = solver.Factorize(factorizing);
+      REQUIRE(factors.size() == expected.size());
       for (const auto& factor : factors) {
         REQUIRE(factor.power == expected[factor.factor]);
       }
@@ -127,7 +128,7 @@ TEST_CASE("Berlekamp") {
         std::vector<solver::Factor<Poly>> expected(1, solver::Factor<Poly>(factor.factor, 1));
 
         REQUIRE(got == expected);
-  
+
         check *= utils::BinPow(factor.factor, factor.power);
       }
       REQUIRE(poly == check);

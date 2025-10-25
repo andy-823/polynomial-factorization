@@ -23,22 +23,24 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <vector>
 
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
-
-#include "common.hpp"
+#include <factorization/solver/common.hpp>
 
 namespace factorization::solver {
 
-template <concepts::Polynom Polynom>
-class Berlekamp {
+template <concepts::Polynom Polynom, bool kReduceDivisions = true>
+class BerlekampExperiment {
   using Element = typename Polynom::Element;
+  static_assert(Element::kCounting == true, "Only counting element is allowed here");
 
  public:
-  inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
+  inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) {
     std::vector<Factor<Polynom>> result;
     polynom.MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
@@ -52,8 +54,25 @@ class Berlekamp {
     return result;
   }
 
+  uint64_t GetGaussActions() const {
+    return gauss_actions_;
+  }
+
+  uint64_t GetDivisionsActions() const {
+    return divisions_actions_;
+  }
+
+  uint64_t GetTotalActions() const {
+    return total_actions_;
+  }
+
  private:
-  inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) const {
+  inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) {
+    Element::ResetActions();
+    gauss_actions_ = 0;
+    divisions_actions_ = 0;
+    total_actions_ = 0;
+
     std::map<Polynom, int> result;
     while (!polynom.IsOne()) {
       Polynom derivative = polynom.Derivative();
@@ -73,13 +92,14 @@ class Berlekamp {
       }
       polynom = gcd;
     }
+    total_actions_ = Element::GetActions();
     return result;
   }
 
   // assume our polynom is
   //   f(x) = g(x)^p
   // this function returns such g(x) by given f(x)
-  inline Polynom FieldBaseRoot(const Polynom& polynom) const {
+  inline Polynom FieldBaseRoot(const Polynom& polynom) {
     constexpr int kFieldBase = Element::FieldBase();
     constexpr int kFieldPower = Element::FieldPower();
 
@@ -100,11 +120,90 @@ class Berlekamp {
     return Polynom(std::move(elements));
   }
 
+  inline Polynom DoModuloPower(Polynom polynom, const auto& matrix) {
+    auto elements = polynom.GetElements();
+    std::vector<Element> result(matrix.size(), Element::Zero());
+    for (size_t i = 0; i < elements.size(); ++i) {
+      for (size_t j = 0; j < matrix.size(); ++j) {
+        result[j] += elements[i] * matrix[i][j];
+      }
+    }
+    // for (size_t _ = 0; _ < Element::FieldPower(); ++_) {
+    //   size_t power = Element::FieldBase();
+
+    //   Polynom squared = std::move(polynom);
+    //   polynom = Polynom({Element::One()});
+    //   while (power > 0) {
+    //     if (power % 2 != 0) {
+    //       polynom = polynom * squared % modulo;
+    //     }
+    //     squared = squared * squared % modulo;
+    //     power /= 2;
+    //   }
+    // }
+    return Polynom(result);
+  }
+
+  inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) {
+    size_t n = polynom.Size() - 1;
+    std::vector<std::vector<Element>> matrix(n, std::vector<Element>(n));
+    {
+      constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
+                                               Element::FieldPower());
+      Polynom base;
+      Polynom current(Element::One());
+      {
+        // here we get that x, done a little weird
+        std::vector<Element> tmp(kFieldSize + 1);
+        tmp.back() = Element::One();  // the only nonzero element is last
+        base = Polynom(std::move(tmp)) % polynom;
+      }
+      for (size_t power = 0; power < n; ++power) {
+        auto elems = current.GetElements();
+        for (size_t i = 0; i < elems.size(); ++i) {
+          matrix[power][i] = elems[i];
+        }
+        current = current * base % polynom;
+      }
+    }
+    
+    std::vector<Polynom> result;
+
+    Polynom factorizing = polynom;
+    Polynom current({Element::Zero(), Element::One()});
+    Polynom x = current;
+    size_t power = 1;
+    while (2 * power < factorizing.Size()) {
+      current = DoModuloPower(std::move(current), matrix);
+      Polynom gcd = Gcd(factorizing, current - x);
+      if (gcd.Size() > 1) {
+        factorizing /= gcd;
+        if (gcd.Size() == power + 1) {
+          result.emplace_back(std::move(gcd));
+        } else {
+          auto divisors = DistinctDegreeFactorize(gcd, power);
+          for (auto& divisor : divisors) {
+            result.emplace_back(std::move(divisor));
+          }
+        }
+      }
+      ++power;
+    }
+    if (factorizing.Size() > 1) {
+      result.emplace_back(std::move(factorizing));
+    }
+    return result;
+  }
+
   // input is monic f(x) = f_1(x) ... f_k(x)
   // where f_1 ... f_k are irreducible
   // return vector because of no repeating factors
-  inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) const {
+  inline std::vector<Polynom> DistinctDegreeFactorize(Polynom polynom, size_t power) {
+    
+    uint64_t before_gauss = Element::GetActions();
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
+    gauss_actions_ = Element::GetActions() - before_gauss;
+
     // that means polynom is irreducible
     if (basis.size() == 1) {
       return {polynom};
@@ -119,8 +218,9 @@ class Berlekamp {
     std::vector<Polynom> new_factors;
     new_factors.reserve(basis.size());
 
+    uint64_t before_divisions = Element::GetActions();
     for (const auto& factorizing : basis) {
-      if (factorizing.Size() == 1) {  // constant
+      if (factorizing.Size() == 1) {
         continue;
       }
       for (const auto& factor : factors) {
@@ -131,8 +231,11 @@ class Berlekamp {
             new_factors.emplace_back(std::move(new_factor));
           }
           // it means that we have already found all necessary factors
-          if (new_factors.size() == basis.size()) {
-            return new_factors;
+          if constexpr (kReduceDivisions == true) {
+            if (new_factors.size() == basis.size()) {
+              divisions_actions_ = Element::GetActions() - before_divisions;
+              return new_factors;
+            }
           }
         }
       }
@@ -140,6 +243,7 @@ class Berlekamp {
       factors.swap(new_factors);
       new_factors.clear();
     }
+    divisions_actions_ = Element::GetActions() - before_divisions;
     return factors;
   }
 
@@ -147,7 +251,7 @@ class Berlekamp {
   // it consists of polynomials g which
   //   g^q = g (mod f)
   // q is field size
-  inline std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) const {
+  inline std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) {
     std::vector<Polynom> result;
     // since powering to q-th power is linear, it can be done with matrix
     // we want not to power but to find specific polynomials
@@ -217,7 +321,7 @@ class Berlekamp {
 
   // returns (A - E)^T
   // where A is equivalent to powering to q-th power
-  inline std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) const {
+  inline std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) {
     constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
                                              Element::FieldPower());
     size_t n = factorizing.Size() - 1;
@@ -263,7 +367,7 @@ class Berlekamp {
   }
 
   inline std::vector<std::vector<Element>> PerformGaussElimination(
-    std::vector<std::vector<Element>> matrix) const {
+    std::vector<std::vector<Element>> matrix) {
 
     size_t n = matrix.size();
     size_t row = 0;
@@ -301,6 +405,11 @@ class Berlekamp {
     matrix.resize(row);
     return matrix;
   }
+
+ private:
+  uint64_t gauss_actions_ = 0;
+  uint64_t divisions_actions_ = 0;
+  uint64_t total_actions_ = 0;
 };
 
 }  // namespace factorization::solver
