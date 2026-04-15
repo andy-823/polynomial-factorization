@@ -31,6 +31,8 @@
 
 #include "common.hpp"
 
+#include <iostream>
+
 namespace factorization::solver {
 
 template <concepts::Polynom Polynom>
@@ -44,66 +46,19 @@ class Berlekamp {
     if (polynom.IsZero() || polynom.IsOne()) {
       return {};
     }
-    std::map<Polynom, int> factors = FactorizeImpl(std::move(polynom));
-    result.reserve(factors.size());
-    for (const auto& [factor, power] : factors) {
-      result.emplace_back(factor, power);
+    for (const auto& [sf_factor, power] : SquareFreeFactorize(polynom)) {
+      for (const auto& factor : FactorizeImpl(sf_factor)) {
+        result.emplace_back(factor, power);
+      }
     }
     return result;
   }
 
  private:
-  inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) const {
-    std::map<Polynom, int> result;
-    while (!polynom.IsOne()) {
-      Polynom derivative = polynom.Derivative();
-      if (derivative.IsZero()) {
-        polynom = FieldBaseRoot(polynom);  // this polynom will be monic
-        // very unlikely case so using recursion inside seems ok
-        for (const auto& [factor, power] : FactorizeImpl(std::move(polynom))) {
-          result[factor] += power * Polynom::Element::FieldBase();
-        }
-        break;  // factorization is complete!
-      }
-      // gcd is already monic
-      Polynom gcd = Gcd(polynom, derivative);
-      // polynom / gcd has no repeating factors
-      for (const auto& factor : SquareFreeFactorize(polynom / gcd)) {
-        ++result[factor];
-      }
-      polynom = gcd;
-    }
-    return result;
-  }
-
-  // assume our polynom is
-  //   f(x) = g(x)^p
-  // this function returns such g(x) by given f(x)
-  inline Polynom FieldBaseRoot(const Polynom& polynom) const {
-    constexpr int kFieldBase = Element::FieldBase();
-    constexpr int kFieldPower = Element::FieldPower();
-
-    std::vector<Element> elements(polynom.GetElements());
-    for (size_t i = 0; i < elements.size(); i += kFieldBase) {
-      // want to get y that y^p = x
-      // consider p is field base, q = p^k is field size
-      // then y = x^{q/p} = x^p^{k - 1}
-      // Note:
-      //   Berlekamp algorithm works only with relatively small fields
-      //   caring about overflow is meaningless
-      //   if your field is so big use another algo
-      constexpr int64_t kPower = utils::BinPow(kFieldBase,
-                                               kFieldPower - 1);
-      elements[i / kFieldBase] = elements[i].Pow(kPower);
-    }
-    elements.resize((elements.size() + kFieldBase - 1) / kFieldBase);
-    return Polynom(std::move(elements));
-  }
-
   // input is monic f(x) = f_1(x) ... f_k(x)
   // where f_1 ... f_k are irreducible
   // return vector because of no repeating factors
-  inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) const {
+  inline std::vector<Polynom> FactorizeImpl(Polynom polynom) const {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
     // that means polynom is irreducible
     if (basis.size() == 1) {
