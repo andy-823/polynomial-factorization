@@ -104,8 +104,8 @@ int main() {
   using GF2_16 = galois_field::LogBasedField<2, 16, { 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1 }>;
 
 
-  constexpr int kRuns = 1'000;
-  constexpr int kTestValue = 400;
+  constexpr int kRuns = 10'000;
+  constexpr int kTestValue = 1000;
   constexpr int kThreads = 12; //20;
   const std::string path{"../../experiments/experiment_3/exp_3_out.txt"};
 
