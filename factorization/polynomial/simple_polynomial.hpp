@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 Andrei Ishutin
+// Copyright (c) 2026 Andrei Ishutin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,15 +37,14 @@ template <concepts::GaloisFieldElement Elem>
 class SimplePolynomial {
  public:
   using Element = Elem;
-  using Value = typename Element::Value;
 
  public:
- inline SimplePolynomial() = default;
+  SimplePolynomial() = default;
 
   // TODO: replace this constructor with better one for convenience
   template <typename T>
-  inline SimplePolynomial(const std::vector<T>& elements) {
-    static_assert(std::constructible_from<Value, T>);
+  SimplePolynomial(const std::vector<T>& elements) {
+    static_assert(std::constructible_from<Element, T>);
     data_.reserve(elements.size());
     for (const auto& element : elements) {
       data_.emplace_back(element);
@@ -53,222 +52,263 @@ class SimplePolynomial {
     RemoveLeadingZeros();
   }
 
-  inline SimplePolynomial(const std::vector<Element>& elements) 
+  SimplePolynomial(const std::vector<Element>& elements) 
       : data_(elements) {
     RemoveLeadingZeros();
   }
 
-  inline SimplePolynomial(std::vector<Element>&& elements) 
+  SimplePolynomial(std::vector<Element>&& elements) 
       : data_(std::move(elements)) {
     RemoveLeadingZeros();
   }
 
-  inline SimplePolynomial(const Element& element) : data_(1, element) {
+  SimplePolynomial(const Element& element) : data_(1, element) {
     RemoveLeadingZeros();  // element may be equal to zero
   }
 
-  inline SimplePolynomial(const SimplePolynomial&) = default;
-  inline SimplePolynomial(SimplePolynomial&&) = default;
+  SimplePolynomial(const SimplePolynomial&) = default;
+  SimplePolynomial(SimplePolynomial&&) = default;
 
-  inline SimplePolynomial& operator=(const SimplePolynomial&) = default;
-  inline SimplePolynomial& operator=(SimplePolynomial&&) = default;
+  SimplePolynomial& operator=(const SimplePolynomial&) = default;
+  SimplePolynomial& operator=(SimplePolynomial&&) = default;
 
-  inline ~SimplePolynomial() = default;
+  ~SimplePolynomial() = default;
 
-  inline bool operator==(const SimplePolynomial&) const = default;
+  auto operator<=>(const SimplePolynomial&) const = default;
 
-  inline bool operator<(const SimplePolynomial& other) const {
-    if (data_.size() != other.data_.size()) {
-      return data_.size() < other.data_.size();
-    }
-    for (size_t i = 0; i < data_.size(); ++i) {
-      if (data_[i].Get() != other.data_[i].Get()) {
-        return data_[i].Get() < other.data_[i].Get();
-      }
-    }
-    return false;  // equal
+  [[nodiscard]]
+  SimplePolynomial Neg() const & {
+    return SimplePolynomial(*this).Neg();
   }
 
-  inline SimplePolynomial& operator+=(const SimplePolynomial& other) {
-    if (data_.size() < other.data_.size()) {
-      data_.resize(other.data_.size(), Element::Zero());
+  [[nodiscard]]
+  SimplePolynomial Neg() && {
+    for (auto& value : data_) {
+      value = -value;
     }
-    for (size_t i = 0; i < other.data_.size(); ++i) {
-      data_[i] += other.data_[i];
+    return std::move(*this);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Add(const SimplePolynomial& rhs) const & {
+    if (data_.size() < rhs.data_.size()) {
+      return SimplePolynomial(rhs).AddInPlace(*this).RemoveLeadingZeros();
     }
+    return SimplePolynomial(*this).AddInPlace(rhs).RemoveLeadingZeros();
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Add(const SimplePolynomial& rhs) && {
+    if (data_.size() < rhs.data_.size()) {
+      data_.resize(rhs.data_.size(), Element::Zero());
+    }
+    AddInPlace(rhs);
     RemoveLeadingZeros();
-    return *this;
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator+=(const Element& element) {
+  [[nodiscard]]
+  SimplePolynomial Add(const Element& element) const & {
+    if (data_.empty() && element != Element::Zero()) {
+      return SimplePolynomial({element});
+    }
+    return SimplePolynomial(*this).Add(element);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Add(const Element& element) && {
     if (data_.empty()) {
       data_.emplace_back(element);
     } else {
       data_[0] += element;
     }
     RemoveLeadingZeros();
-    return *this;
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator-=(const SimplePolynomial& other) {
-    if (data_.size() < other.data_.size()) {
-      data_.resize(other.data_.size(), Element::Zero());
+  [[nodiscard]]
+  SimplePolynomial Sub(const SimplePolynomial& rhs) const & {
+    if (data_.size() < rhs.data_.size()) {
+      SimplePolynomial result(*this);
+      result.data_.resize(rhs.data_.size(), Element::Zero());
+      return result.SubInPlace(rhs).RemoveLeadingZeros();
     }
-    for (size_t i = 0; i < other.data_.size(); ++i) {
-      data_[i] -= other.data_[i];
+    return SimplePolynomial(*this).SubInPlace(rhs).RemoveLeadingZeros();
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Sub(const SimplePolynomial& rhs) && {
+    if (data_.size() < rhs.data_.size()) {
+      data_.resize(rhs.data_.size(), Element::Zero());
     }
+    SubInPlace(rhs);
     RemoveLeadingZeros();
-    return *this;
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator-=(const Element& element) {
-    if (data_.empty()) {
-      data_.emplace_back(element);
+  [[nodiscard]]
+  SimplePolynomial Sub(const Element& element) const & {
+    if (data_.empty() && element != Element::Zero()) {
+      return SimplePolynomial({-element});
     }
-    else {
+    return SimplePolynomial(*this).Sub(element);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Sub(const Element& element) && {
+    if (data_.empty()) {
+      data_.emplace_back(-element);
+    } else {
       data_[0] -= element;
     }
     RemoveLeadingZeros();
-    return *this;
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator*=(const SimplePolynomial& other) {
-    // check if result is zero
-    if (data_.empty() || other.data_.empty()) {
+  [[nodiscard]]
+  SimplePolynomial Mul(const SimplePolynomial& rhs) const & {
+    // multiply by zero
+    if (data_.empty() || rhs.data_.empty()) {
+      return SimplePolynomial();
+    }
+    return SimplePolynomial(*this).MulInPlace(rhs);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Mul(const SimplePolynomial& rhs) && {
+    // multiply by zero
+    if (data_.empty() || rhs.data_.empty()) {
       data_.clear();
-      return *this;
+      return std::move(*this);
     }
-    // other is actually constant
-    if (other.data_.size() == 1) {
-      for (auto& value : data_) {
-        value *= other.data_[0];
-      }
-      return *this;
-    }
-    size_t result_power = data_.size() + other.data_.size() - 1;
-    std::vector<Element> result(result_power, Element::Zero());
-
-    for (size_t power = 0; power < other.data_.size(); ++power) {
-      Element coefficient = other.data_[power];
-      if (coefficient == Element::Zero()) {
-        continue;
-      }
-      auto what = data_.begin();
-      auto with = result.begin() + power;
-      while (what != data_.end()) {
-        *with += *what * coefficient; 
-        ++what;
-        ++with;
-      }
-    }
-    data_ = std::move(result);
-    return *this;
+    MulInPlace(rhs);
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator*=(const Element& element) {
-    // check if result is zero
+  [[nodiscard]]
+  SimplePolynomial Mul(const Element& element) const & {
+    if (data_.empty() || element == Element::Zero()) {
+      return SimplePolynomial();
+    }
+    return SimplePolynomial(*this).MulInPlace(element);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Mul(const Element& element) && {
     if (element == Element::Zero()) {
       data_.clear();
-    } else {
-      for (auto& value : data_) {
-        value *= element;
-      }
+      return std::move(*this);
     }
-    return *this;
+    MulInPlace(element);
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator/=(const SimplePolynomial& other) {
-    // result is zero
-    if (data_.size() < other.data_.size()) {
-      data_.clear();
-      return *this;
+  [[nodiscard]]
+  SimplePolynomial Div(const SimplePolynomial& rhs) const & {
+    // we are zero
+    if (data_.empty()) {
+      return SimplePolynomial();
     }
-    // other is actually constant
-    if (other.data_.size() == 1) {
-      return *this /= other.data_[0];
-    }
-    size_t result_size = data_.size() - other.data_.size() + 1;
-    std::vector<Element> result(result_size);
-    for (int power = static_cast<int>(result_size - 1); power >= 0; --power) {
-      // will perform naive polinomial division
-      // go from greatest power to lowest
-      // we have smth like this every step
-      //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
-      // minus
-      //                           b[0] + ... + b[n - k]
-      // probably the best idea how to make it look fine
-      // is to use iterators
-      auto divident = data_.rbegin() + result_size - 1 - power;
-      auto divisor = other.data_.rbegin();
-
-      Element coefficient = *divident / *divisor;
-      result[power] = coefficient;
-
-      if (coefficient == Element::Zero()) {
-        continue;
-      }
-      while (divisor != other.data_.rend()) {
-        *divident -= *divisor * coefficient;
-        ++divident;
-        ++divisor;
-      }
-    }
-    data_ = std::move(result);
-    return *this;
+    return SimplePolynomial(*this).DivInPlace(rhs);
   }
 
-  inline SimplePolynomial& operator/=(const Element& element) {
-    // Divide by zero is UB
-    auto inverse = element.Inverse();
-    for (auto& value : data_) {
-      value *= inverse;
+  [[nodiscard]]
+  SimplePolynomial Div(const SimplePolynomial& rhs) && {
+    // we are zero
+    if (data_.empty()) {
+      return std::move(*this);
     }
-    return *this;
+    DivInPlace(rhs);
+    return std::move(*this);
   }
 
-  inline SimplePolynomial& operator%=(const SimplePolynomial& other) {
-    // nothing to do
-    if (data_.size() < other.data_.size()) {
-      return *this;
+  [[nodiscard]]
+  SimplePolynomial Div(const Element& element) const & {
+    if (data_.empty()) {
+      return SimplePolynomial();
     }
-    // Remainder by zero is UB
-    size_t num_steps = data_.size() - other.data_.size() + 1;
-    for (size_t step = 0; step < num_steps; ++step) {
-      // act almost the same way as division
-      auto divident = data_.rbegin() + step;
-      auto divisor = other.data_.rbegin();
+    return SimplePolynomial(*this).DivInPlace(element);
+  }
 
-      Element coefficient = *divident / *divisor;
-      if (coefficient == Element::Zero()) {
-        continue;
-      }
-      while (divisor != other.data_.rend()) {
-        *divident -= *divisor * coefficient;
-        ++divident;
-        ++divisor;
-      }
+  [[nodiscard]]
+  SimplePolynomial Div(const Element& element) && {
+    if (data_.empty()) {
+      return std::move(*this);
     }
-    RemoveLeadingZeros();
-    return *this;
+    DivInPlace(element);
+    return std::move(*this);
   }
 
-  inline SimplePolynomial operator-() const {
-    std::vector<Element> result = data_;
-    for (auto& value : result) {
-      value = -value;
+  [[nodiscard]]
+  SimplePolynomial Rem(const SimplePolynomial& rhs) const & {
+    // we are zero
+    if (data_.empty()) {
+      return SimplePolynomial();
     }
-    return SimplePolynomial(std::move(result));
+    return SimplePolynomial(*this).RemInPlace(rhs);
   }
 
-  inline std::vector<Element> GetElements() const {
-    return data_;
+  [[nodiscard]]
+  SimplePolynomial Rem(const SimplePolynomial& rhs) && {
+    // we are zero
+    if (data_.empty()) {
+      return std::move(*this);
+    }
+    RemInPlace(rhs);
+    return std::move(*this);
   }
 
-  inline size_t Size() const {
-    return data_.size();
+  [[nodiscard]]
+  std::pair<SimplePolynomial, SimplePolynomial>
+  DivRem(const SimplePolynomial& rhs) const & {
+    if (data_.empty()) {
+      return {SimplePolynomial(), SimplePolynomial()};
+    }
+    return SimplePolynomial(*this).DivRemInPlace(rhs);
   }
 
-  inline SimplePolynomial Derivative() const {
+  [[nodiscard]]
+  std::pair<SimplePolynomial, SimplePolynomial>
+  DivRem(const SimplePolynomial& rhs) && {
+    if (data_.empty()) {
+      return {SimplePolynomial(), std::move(*this)};
+    }
+    return DivRemInPlace(rhs);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Gcd(SimplePolynomial b) const & {
+    return SimplePolynomial(*this).Gcd(std::move(b));
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Gcd(SimplePolynomial b) && {
+    while (!b.IsZero()) {
+      RemInPlace(b);
+      data_.swap(b.data_);
+    }
+    return std::move(*this).MakeMonic();
+  }
+
+  // Makes polynomial monic
+  [[nodiscard]]
+  SimplePolynomial MakeMonic() const & {
+    if (data_.empty()) {
+      return SimplePolynomial();
+    }
+    // division by leading coefficient
+    return SimplePolynomial(*this).DivInPlace(data_.back());
+  }
+
+  SimplePolynomial MakeMonic() && {
+    if (!data_.empty()) {
+      DivInPlace(data_.back());
+    }
+    return std::move(*this);
+  }
+
+  [[nodiscard]]
+  SimplePolynomial Derivative() const & {
     if (data_.size() <= 1) {
       return SimplePolynomial();
     }
@@ -279,110 +319,230 @@ class SimplePolynomial {
     return SimplePolynomial(std::move(result));
   }
 
-  // Makes polynomial monic
-  inline void MakeMonic() {
-    if (data_.empty()) {
-      return;
+  [[nodiscard]]
+  SimplePolynomial Derivative() && {
+    int n = static_cast<int>(data_.size());
+    if (n <= 1) {
+      data_.clear();
+      return std::move(*this);
     }
-    auto leading = data_.back();
-    if (leading == Element::One()) {  // already monic
-      return;
+    for (int i = 1; i < n; ++i) {
+      data_[i - 1] = Element::AsPolyConstant(i) * data_[i];
     }
-    for (auto& element : data_) {
-      element /= leading;
-    }
+    data_.pop_back();
+    RemoveLeadingZeros();
+    return std::move(*this);
   }
 
-  inline bool IsZero() const {
+  [[nodiscard]]
+  std::vector<Element> Get() const & {
+    return data_;
+  }
+
+  [[nodiscard]]
+  std::vector<Element>&& Get() && {
+    return std::move(data_);
+  }
+
+  [[nodiscard]]
+  size_t Size() const noexcept {
+    return data_.size();
+  }
+
+  [[nodiscard]]
+  bool IsZero() const noexcept {
     return data_.size() == 0;
   }
 
-  inline bool IsOne() const {
+  [[nodiscard]]
+  bool IsOne() const noexcept {
     return data_.size() == 1 && data_[0] == Element::One();
   }
 
+
  private:
-  inline void RemoveLeadingZeros() {
-    size_t new_size = data_.size();
-    while (new_size > 0 && data_[new_size - 1] == Element::Zero()) {
-      --new_size;
+  SimplePolynomial& RemoveLeadingZeros() {
+    while (!data_.empty() && data_.back() == Element::Zero()) {
+      data_.pop_back();
     }
-    data_.resize(new_size);
+    return *this;
+  }
+
+  // assume data_.size() >= rhs.data_.size()
+  SimplePolynomial& AddInPlace(const SimplePolynomial& rhs) {
+    for (size_t i = 0; i < rhs.data_.size(); ++i) {
+      data_[i] += rhs.data_[i];
+    }
+    return *this;
+  }
+
+  // assume data_.size() >= rhs.data_.size()
+  SimplePolynomial& SubInPlace(const SimplePolynomial& rhs) {
+    for (size_t i = 0; i < rhs.data_.size(); ++i) {
+      data_[i] -= rhs.data_[i];
+    }
+    return *this;
+  }
+
+  // Both are nonzero
+  SimplePolynomial& MulInPlace(const SimplePolynomial& rhs) {
+    const int n = static_cast<int>(data_.size());
+    const int m = static_cast<int>(rhs.data_.size());
+
+    // multiplication by constant
+    if (m == 1) {
+      return MulInPlace(rhs.data_[0]);
+    }
+
+    std::vector<Element> result(n + m - 1, Element::Zero());
+
+    const auto* a = data_.data();
+    const auto* b = rhs.data_.data();
+    auto* res = result.data();
+
+    for (size_t i = 0; i < n; ++i) {
+      Element coeff = a[i];
+      if (coeff == Element::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (size_t j = 0; j < m; ++j) {
+        res[i + j] += coeff * b[j];
+      }
+    }
+    data_ = std::move(result);
+    return *this;
+  }
+
+  // assume element is not zero
+  SimplePolynomial& MulInPlace(const Element& element) {
+    if (element != Element::One()) [[likely]] {
+      for (auto& value : data_) {
+        value *= element;
+      }
+    }
+    return *this;
+  }
+
+  // assume division is not by zero
+  SimplePolynomial& DivInPlace(const SimplePolynomial& rhs) {
+    const int n = static_cast<int>(data_.size());
+    const int m = static_cast<int>(rhs.data_.size());
+
+    if (n < m) {
+      data_.clear();
+      return *this;
+    }
+    if (m == 1) {
+      return DivInPlace(rhs.data_[0]);
+    }
+    const Element inv_lead = rhs.data_.back().Inverse();
+    const int quotient_size = n - m + 1;
+    std::vector<Element> quotient(quotient_size);
+
+    Element* a = data_.data();
+    const Element* b = rhs.data_.data();
+    // will perform naive polinomial division
+    // go from greatest power to lowest
+    // we have smth like this every step
+    //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
+    // minus
+    //                           b[0] + ... + b[n - k]
+    for (int i = quotient_size - 1; i >= 0; --i) {
+      Element coeff = a[i + m - 1] * inv_lead;
+      quotient[i] = coeff;
+      if (coeff == Element::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (int j = 0; j < m - 1; ++j) {
+        a[i + j] -= coeff * b[j];
+      }
+    }
+    data_ = std::move(quotient);
+    return *this;
+  }
+
+  // assume element is not zero
+  SimplePolynomial& DivInPlace(const Element& element) {
+    if (element != Element::One()) {
+      return MulInPlace(element.Inverse());
+    }
+    return *this;
+  }
+
+  // assume division is not by zero
+  SimplePolynomial& RemInPlace(const SimplePolynomial& rhs) {
+    const int n = static_cast<int>(data_.size());
+    const int m = static_cast<int>(rhs.data_.size());
+
+    if (n < m) {
+      return *this;
+    }
+    if (m == 1) {
+      data_.clear();
+      return *this;
+    }
+    const Element inv_lead = rhs.data_.back().Inverse();
+    const int quotient_size = n - m + 1;
+    Element* a = data_.data();
+    const Element* b = rhs.data_.data();
+    // will perform naive polinomial division
+    // go from greatest power to lowest
+    // we have smth like this every step
+    //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
+    // minus
+    //                           b[0] + ... + b[n - k]
+    for (int i = quotient_size - 1; i >= 0; --i) {
+      Element coeff = a[i + m - 1] * inv_lead;
+      if (coeff == Element::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (int j = 0; j < m - 1; ++j) {
+        a[i + j] -= coeff * b[j];
+      }
+    }
+    data_.resize(m - 1);
+    RemoveLeadingZeros();
+    return *this;
+  }
+
+  // assume division is not by zero, <quotient, remainder>
+  [[nodiscard]]
+  std::pair<SimplePolynomial, SimplePolynomial> 
+  DivRemInPlace(const SimplePolynomial& rhs) && {
+    const int n = static_cast<int>(data_.size());
+    const int m = static_cast<int>(rhs.data_.size());
+    if (n < m) {
+      RemoveLeadingZeros();
+      return {SimplePolynomial(), std::move(*this)};
+    }
+    if (m == 1) {
+      DivInPlace(rhs.data_[0]);
+      RemoveLeadingZeros();
+      return {std::move(*this), SimplePolynomial()};
+    }
+    const Element inv_lead = rhs.data_.back().Inverse();
+    const int quotient_size = n - m + 1;
+    std::vector<Element> quotient(quotient_size);
+
+    Element* a = data_.data();
+    const Element* b = rhs.data_.data();
+    for (int i = quotient_size - 1; i >= 0; --i) {
+      Element coeff = a[i + m - 1] * inv_lead;
+      quotient[i] = coeff;
+      if (coeff == Element::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (int j = 0; j < m - 1; ++j) {
+        a[i + j] -= coeff * b[j];
+      }
+    }
+    data_.resize(m - 1);
+    RemoveLeadingZeros();
+    SimplePolynomial remainder(std::move(*this));
+    return {SimplePolynomial(std::move(quotient)), std::move(remainder)};
   }
 
   std::vector<Element> data_;
 };
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator+(SimplePolynomial<Element> first,
-                                           const SimplePolynomial<Element>& second) {
-  return first += second;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator+(SimplePolynomial<Element> poly,
-                                    Element value) {
-  return poly += value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator+(Element value,
-                                    SimplePolynomial<Element> poly) {
-  return poly += value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator-(SimplePolynomial<Element> first,
-                                    const SimplePolynomial<Element>& second) {
-  return first -= second;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator-(SimplePolynomial<Element> poly,
-                                    Element value) {
-  return poly -= value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator-(Element value,
-                                    const SimplePolynomial<Element>& poly) {
-  return -poly += value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator*(SimplePolynomial<Element> first,
-                                           const SimplePolynomial<Element>& second) {
-  return first *= second;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator*(SimplePolynomial<Element> poly,
-                                    Element value) {
-  return poly *= value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator*(Element value,
-                                    SimplePolynomial<Element> poly) {
-  return poly *= value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator/(SimplePolynomial<Element> first,
-                                    const SimplePolynomial<Element>& second) {
-  return first /= second;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator/(SimplePolynomial<Element> poly,
-                                           Element value) {
-  return poly /= value;
-}
-
-template <concepts::GaloisFieldElement Element>
-inline SimplePolynomial<Element> operator%(SimplePolynomial<Element> first,
-                                           const SimplePolynomial<Element>& second) {
-  return first %= second;
-}
 
 }  // namespace factorization::polynomial

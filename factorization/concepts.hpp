@@ -56,6 +56,8 @@ concept GaloisField = requires (Field field, Field::Value value) {
 template <typename Element>
 concept GaloisFieldElement = requires (Element element, Element::Value value) {
   requires std::copy_constructible<Element>;
+  requires std::totally_ordered<Element>;
+
   { element = element } -> std::same_as<Element&>;
 
   { Element::One() } -> std::same_as<Element>;
@@ -87,60 +89,38 @@ concept GaloisFieldElement = requires (Element element, Element::Value value) {
 };
 
 template <typename Poly>
-concept Polynom = requires(Poly poly, Poly::Element value) {
+concept Polynom = requires(const Poly& poly, Poly::Element value) {
   // This requirement is needed since sometimes we need
   // to perform arithmetic outside of polynom class
   requires GaloisFieldElement<typename Poly::Element>;
 
-  // TODO: make construction from range
   requires std::constructible_from<Poly, std::vector<typename Poly::Element>>;
-  requires std::copy_constructible<Poly>;
-  { poly = poly } -> std::same_as<Poly&>;
+  requires std::semiregular<Poly>;
+  requires std::totally_ordered<Poly>;
 
-  // need to put it into std::set or simply compare
-  { poly == poly } -> std::same_as<bool>;
-  { poly < poly } -> std::same_as<bool>;
+  { poly.Add(poly) } -> std::convertible_to<Poly>;
+  { poly.Sub(poly) } -> std::convertible_to<Poly>;
+  { poly.Mul(poly) } -> std::convertible_to<Poly>;
+  { poly.Div(poly) } -> std::convertible_to<Poly>;
+  { poly.Rem(poly) } -> std::convertible_to<Poly>;
+  // <quotient, remainder>
+  { poly.DivRem(poly) } -> std::same_as<std::pair<Poly, Poly>>;
+  { poly.Gcd(poly) } -> std::convertible_to<Poly>;
+  { poly.MakeMonic() } -> std::convertible_to<Poly>;
+  { poly.Derivative() } -> std::convertible_to<Poly>;
 
-  { poly += poly } -> std::same_as<Poly&>;
-  { poly -= poly } -> std::same_as<Poly&>;
-  { poly *= poly } -> std::same_as<Poly&>;
-  { poly /= poly } -> std::same_as<Poly&>;
-  { poly %= poly } -> std::same_as<Poly&>;
-
-  { -poly } -> std::same_as<Poly>;
-
-  { poly + poly } -> std::same_as<Poly>;
-  { poly - poly } -> std::same_as<Poly>;
-  { poly * poly } -> std::same_as<Poly>;
-  { poly / poly } -> std::same_as<Poly>;
-  { poly % poly } -> std::same_as<Poly>;
-
-  // this specialization is needed since we probably don't want
-  // to construct Polynom from single element just for this
-  { poly += value } -> std::same_as<Poly&>;
-  { poly -= value } -> std::same_as<Poly&>;
-  { poly /= value } -> std::same_as<Poly&>;
-  { poly *= value } -> std::same_as<Poly&>;
-
-  { poly + value } -> std::same_as<Poly>;
-  { value + poly } -> std::same_as<Poly>;
-  { poly - value } -> std::same_as<Poly>;
-  { value - poly } -> std::same_as<Poly>;
-  { poly * value } -> std::same_as<Poly>;
-  { value * poly } -> std::same_as<Poly>;
-  { poly / value } -> std::same_as<Poly>;
+  { poly.Add(value) } -> std::convertible_to<Poly>;
+  { poly.Sub(value) } -> std::convertible_to<Poly>;
+  { poly.Mul(value) } -> std::convertible_to<Poly>;
+  { poly.Div(value) } -> std::convertible_to<Poly>;
 
   // This method has to follow this invariant
   //   a[0] + a[1] x + a[2] x^2 + ... + a[n] x^n
   // From lower power to higher
-  { poly.GetElements() } -> std::same_as<std::vector<typename Poly::Element>>;
+  { poly.Get() } -> std::same_as<std::vector<typename Poly::Element>>;
   // return polynom power + 1 if polynom is nonzero
   // otherwise return zero
   { poly.Size() } -> std::integral;
-  { poly.MakeMonic() } -> std::same_as<void>;
-  { poly.Derivative() } -> std::same_as<Poly>;
-
-  // Need to check if polynomial is equal to one or zero without any construction
   { poly.IsOne() } -> std::same_as<bool>;
   { poly.IsZero() } -> std::same_as<bool>;
 };

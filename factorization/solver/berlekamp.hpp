@@ -30,6 +30,7 @@
 #include <factorization/utils.hpp>
 
 #include "common.hpp"
+#include "square_free_factorization.hpp"
 
 #include <iostream>
 
@@ -42,11 +43,11 @@ class Berlekamp {
  public:
   inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
     std::vector<Factor<Polynom>> result;
-    polynom.MakeMonic();
+    polynom = std::move(polynom).MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
       return {};
     }
-    for (const auto& [sf_factor, power] : SquareFreeFactorize(polynom)) {
+    for (const auto& [sf_factor, power] : sff::SquareFreeFactorize(polynom)) {
       for (const auto& factor : FactorizeImpl(sf_factor)) {
         result.emplace_back(factor, power);
       }
@@ -80,7 +81,7 @@ class Berlekamp {
       }
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
-          Polynom new_factor = Gcd(factor, factorizing - c);
+          Polynom new_factor = factor.Gcd(factorizing.Sub(c));
           // new factor is non trivial
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
@@ -194,14 +195,14 @@ class Berlekamp {
         // here we get that x, done a little weird
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
-        base = Polynom(std::move(tmp)) % factorizing;
+        base = Polynom(std::move(tmp)).Rem(factorizing);
       }
       for (size_t power = 0; power < n; ++power) {
-        auto elems = current.GetElements();
+        auto elems = current.Get();
         for (size_t i = 0; i < elems.size(); ++i) {
           result[power][i] = elems[i];
         }
-        current = current * base % factorizing;
+        current = std::move(current).Mul(base).Rem(factorizing);
       }
     }
     // yA = y

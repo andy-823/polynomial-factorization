@@ -23,16 +23,16 @@ TEST_CASE("SimplePolynomial") {
       Poly first({1, 0, 1, 0, 1, 1});
       Poly second = first;
 
-      REQUIRE((first + second).IsZero());
-      REQUIRE((first - second).IsZero());
+      REQUIRE(first.Add(second).IsZero());
+      REQUIRE(first.Sub(second).IsZero());
     }
 
     {
       Poly first({1, 0, 1, 0, 1, 1});
       Poly expected({0, 0, 1, 0, 1, 1});
 
-      REQUIRE(first - Element(1) == expected);
-      REQUIRE(first + Element(1) == expected);
+      REQUIRE(first.Add(Element(1)) == expected);
+      REQUIRE(first.Add(Element(1)) == expected);
     }
 
     {
@@ -40,7 +40,7 @@ TEST_CASE("SimplePolynomial") {
       Poly second({1, 0, 1, 0, 0, 1});
       Poly expected({0, 0, 0, 0, 1});
 
-      REQUIRE(first + second == expected);
+      REQUIRE(first.Add(second) == expected);
     }
   }
 
@@ -52,18 +52,18 @@ TEST_CASE("SimplePolynomial") {
     {
       Poly poly({1, 0, 1, 0, 1, 1});
 
-      REQUIRE(poly / poly == Poly{1});
-      REQUIRE((poly / poly).IsOne());
+      REQUIRE(poly.Div(poly) == Poly{1});
+      REQUIRE(poly.Div(poly).IsOne());
 
-      REQUIRE((poly % Poly{1}).IsZero());
-      REQUIRE((poly * Poly{0}).IsZero());
+      REQUIRE(poly.Rem(Poly{1}).IsZero());
+      REQUIRE(poly.Mul(Poly{0}).IsZero());
     }
 
     {
       Poly poly({3, 3, 3, 3});
 
-      REQUIRE(poly * Element{2} == Poly({6, 6, 6, 6}));
-      REQUIRE(poly / Element{3} == Poly({1, 1, 1, 1}));
+      REQUIRE(poly.Mul(Element{2}) == Poly({6, 6, 6, 6}));
+      REQUIRE(poly.Div(Element{3}) == Poly({1, 1, 1, 1}));
     }
   }
 
@@ -80,9 +80,7 @@ TEST_CASE("SimplePolynomial") {
 
     {
       Poly poly({3, 3, 3, 3});
-      poly.MakeMonic();
-
-      REQUIRE(poly == Poly({1, 1, 1, 1}));
+      REQUIRE(poly.MakeMonic() == Poly({1, 1, 1, 1}));
     }
 
     {
@@ -115,16 +113,16 @@ TEST_CASE("SimplePolynomial") {
       auto second = GenPoly<Poly>(random_gen);
 
       {
-        auto rem = first % second;
-        auto div = first / second;
+        auto rem = first.Rem(second);
+        auto div = first.Div(second);
 
-        REQUIRE(div * second + rem == first);
+        REQUIRE(div.Mul(second).Add(rem) == first);
       }
 
       {
-        auto sub = first - second;
+        auto sub = first.Sub(second);
 
-        REQUIRE(sub + second == first);
+        REQUIRE(sub.Add(second) == first);
       }
     }
   }

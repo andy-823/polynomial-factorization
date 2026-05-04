@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 Andrei Ishutin
+// Copyright (c) 2026 Andrei Ishutin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,7 @@
 
 #include <factorization/concepts.hpp>
 
-namespace factorization::solver {
-
-template <concepts::Polynom Polynom>
-struct Factor {
-  Polynom factor;
-  int power;
-
-  bool operator==(const Factor&) const = default;
-};
+namespace factorization::sff {
 
 // assume polynom is
 //   f(x) = g(x)^p
@@ -59,4 +51,39 @@ inline Polynom FieldBaseRoot(const Polynom& polynom) {
   return Polynom(std::move(elements));
 }
 
-}  // namespace factorization::solver
+template <concepts::Polynom Polynom>
+constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
+    Polynom polynom) {
+  std::vector<solver::Factor<Polynom>> result;
+  // f  = g_1 g_2^2 ... g_m^m * h^p
+  // f' = g_2 g_m^{m-1} * h^p * (sum i g'_i * g / g_i)
+  Polynom derivative = polynom.Derivative();
+  // c = g_2^2 ... g_m^{m-1} h^p
+  Polynom c = polynom.Gcd(derivative);
+  // w = g_1 ... g_m
+  Polynom square_free_factors = polynom.Div(c);
+  // d = sum (i - 1) * g'_i * g / g_i
+  Polynom d = derivative.Div(c).Sub(square_free_factors.Derivative());
+  int j = 1;
+  // on each iteration we extract one factor
+  // from square_free_factors
+  while (!square_free_factors.IsOne()) {
+    polynom = std::move(polynom).Div(square_free_factors);
+    auto factor = square_free_factors.Gcd(d);
+    result.emplace_back(factor, j);
+    square_free_factors = std::move(square_free_factors).Div(factor);
+    d = std::move(d).Div(factor).Sub(square_free_factors.Derivative());
+    ++j;
+  }
+  // that means polynom is p-th power
+  if (!polynom.IsOne()) {
+    auto factors = SquareFreeFactorize(FieldBaseRoot(polynom));
+    for (const auto& [factor, power] : factors) {
+      int factor_power = power * Polynom::Element::FieldBase();
+      result.emplace_back(factor, factor_power);
+    }
+  }
+  return result;
+}
+
+}  // namespace factorization::sff
