@@ -23,6 +23,7 @@
 #pragma once
 
 #include <vector>
+#include <iostream>
 
 #include <factorization/concepts.hpp>
 
@@ -57,22 +58,22 @@ constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
   std::vector<solver::Factor<Polynom>> result;
   // f  = g_1 g_2^2 ... g_m^m * h^p
   // f' = g_2 g_m^{m-1} * h^p * (sum i g'_i * g / g_i)
-  Polynom derivative = polynom.Derivative();
-  // c = g_2^2 ... g_m^{m-1} h^p
-  Polynom c = polynom.Gcd(derivative);
-  // w = g_1 ... g_m
-  Polynom square_free_factors = polynom.Div(c);
-  // d = sum (i - 1) * g'_i * g / g_i
-  Polynom d = derivative.Div(c).Sub(square_free_factors.Derivative());
+  // c = g_2^1 ... g_m^{m-1} h^p
+  Polynom c = polynom.Gcd(polynom.Derivative());
+  // factors = g_1 ... g_m
+  Polynom factors = polynom.Div(c);
   int j = 1;
   // on each iteration we extract one factor
   // from square_free_factors
-  while (!square_free_factors.IsOne()) {
-    polynom = std::move(polynom).Div(square_free_factors);
-    auto factor = square_free_factors.Gcd(d);
+  while (!factors.IsOne()) {
+    // next_factors = g_2 ... g_m
+    Polynom next_factors = factors.Gcd(c);
+    auto factor = std::move(factors).Div(next_factors);
     result.emplace_back(factor, j);
-    square_free_factors = std::move(square_free_factors).Div(factor);
-    d = std::move(d).Div(factor).Sub(square_free_factors.Derivative());
+  
+    factors = std::move(next_factors);
+    c = std::move(c).Div(factors);
+    std::cout << factors.Size() << "\n";
     ++j;
   }
   // that means polynom is p-th power
