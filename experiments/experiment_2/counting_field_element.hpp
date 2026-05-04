@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 Andrei Ishutin
+// Copyright (c) 2026 Andrei Ishutin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,102 +47,102 @@ class CountingFieldElement {
   constexpr static bool kCounting = true;
 
  public:
-  constexpr inline CountingFieldElement() = default;
+  constexpr CountingFieldElement() = default;
 
   template <typename T>
-  constexpr inline CountingFieldElement(T value)
+  constexpr CountingFieldElement(T value)
       : value_(std::forward<T>(value)) {
     static_assert(std::constructible_from<Value, T>);
   }
 
-  constexpr inline CountingFieldElement(const CountingFieldElement&) = default;
-  constexpr inline CountingFieldElement(CountingFieldElement&&) = default;
+  constexpr CountingFieldElement(const CountingFieldElement&) = default;
+  constexpr CountingFieldElement(CountingFieldElement&&) = default;
 
-  constexpr inline CountingFieldElement& operator=(const CountingFieldElement&) = default;
-  constexpr inline CountingFieldElement& operator=(CountingFieldElement&&) = default;
+  constexpr CountingFieldElement& operator=(const CountingFieldElement&) = default;
+  constexpr CountingFieldElement& operator=(CountingFieldElement&&) = default;
 
-  inline ~CountingFieldElement() = default;
+ ~CountingFieldElement() = default;
 
-  constexpr inline bool operator==(const CountingFieldElement&) const = default;
+  constexpr auto operator<=>(const CountingFieldElement&) const = default;
 
-  constexpr static inline CountingFieldElement Zero() {
+  constexpr static CountingFieldElement Zero() {
     return CountingFieldElement(kField.Zero());
   }
 
-  constexpr static inline CountingFieldElement One() {
+  constexpr static CountingFieldElement One() {
     return CountingFieldElement(kField.One());
   }
 
-  constexpr static inline CountingFieldElement AsPolyConstant(Value value) {
+  constexpr static CountingFieldElement AsPolyConstant(Value value) {
     return kField.FieldValueFromConstant(value);
   }
 
-  constexpr inline Value Get() const {
+  constexpr Value Get() const {
     return value_;
   }
 
-  static inline void ResetActions() {
+  static void ResetActions() {
     actions = 0;
   }
 
-  static inline uint64_t GetActions() {
+  static uint64_t GetActions() {
     return actions;
   }
 
-  constexpr inline CountingFieldElement& operator+=(
+  constexpr CountingFieldElement& operator+=(
       const CountingFieldElement& other) {
     Action();
     value_ = kField.Add(value_, other.value_);
     return *this;
   }
 
-  constexpr inline CountingFieldElement& operator-=(
+  constexpr CountingFieldElement& operator-=(
       const CountingFieldElement& other) {
     Action();
     value_ = kField.Sub(value_, other.value_);
     return *this;
   }
 
-  constexpr inline CountingFieldElement operator-() const {
+  constexpr CountingFieldElement operator-() const {
     Action();
     return CountingFieldElement(kField.Negative(value_));
   }
 
-  constexpr inline CountingFieldElement& operator*=(
+  constexpr CountingFieldElement& operator*=(
       const CountingFieldElement& other) {
     Action();
     value_ = kField.Multiply(value_, other.value_);
     return *this;
   }
 
-  constexpr inline CountingFieldElement& operator/=(
+  constexpr CountingFieldElement& operator/=(
       const CountingFieldElement& other) {
     Action();
     value_ = kField.Divide(value_, other.value_);
     return *this;
   }
 
-  constexpr inline CountingFieldElement Inverse() const {
+  constexpr CountingFieldElement Inverse() const {
     Action();
     return CountingFieldElement(kField.Inverse(value_));
   }
 
   template <typename Power>
-  constexpr inline CountingFieldElement Pow(Power power) const {
+  constexpr CountingFieldElement Pow(Power power) const {
     Action();
     return CountingFieldElement(kField.Pow(value_, power));
   }
 
-  constexpr static inline uint32_t FieldBase() {
+  constexpr static uint32_t FieldBase() {
     return Field::FieldBase();
   }
 
-  constexpr static inline uint32_t FieldPower() {
+  constexpr static uint32_t FieldPower() {
     return Field::FieldPower();
   }
 
   // std vector is temporary option
-  constexpr static inline std::vector<CountingFieldElement> AllFieldElements() {
+  constexpr static std::vector<CountingFieldElement> AllFieldElements() {
     Value current = kField.FirstFieldValue();
     std::vector<CountingFieldElement> result;
     result.emplace_back(current);
@@ -154,7 +154,7 @@ class CountingFieldElement {
   }
 
  private:
-  constexpr static inline Field kField{};
+  constexpr static Field kField{};
   Value value_;
 };
 

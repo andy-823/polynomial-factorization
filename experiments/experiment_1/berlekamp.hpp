@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 Andrei Ishutin
+// Copyright (c) 2026 Andrei Ishutin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ class BerlekampExperiment {
  public:
   inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) {
     std::vector<Factor<Polynom>> result;
-    polynom.MakeMonic();
+    polynom = std::move(polynom).MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
       return {};
     }
@@ -73,24 +73,37 @@ class BerlekampExperiment {
     total_actions_ = 0;
 
     std::map<Polynom, int> result;
-    while (!polynom.IsOne()) {
-      Polynom derivative = polynom.Derivative();
-      if (derivative.IsZero()) {
-        polynom = FieldBaseRoot(polynom);  // this polynom will be monic
-        // very unlikely case so using recursion inside seems ok
-        for (const auto& [factor, power] : FactorizeImpl(std::move(polynom))) {
-          result[factor] += power * Polynom::Element::FieldBase();
+    // f  = g_1 g_2^2 ... g_m^m * h^p
+    // f' = g_2 g_m^{m-1} * h^p * (sum i g'_i * g / g_i)
+    // c = g_2^1 ... g_m^{m-1} h^p
+    Polynom c = polynom.Gcd(polynom.Derivative());
+    // factors = g_1 ... g_m
+    Polynom factors = polynom.Div(c);
+    int j = 1;
+    // on each iteration we extract one factor
+    // from square_free_factors
+    while (!factors.IsOne()) {
+      // next_factors = g_2 ... g_m
+      Polynom next_factors = factors.Gcd(c);
+      if (factors != next_factors) {
+        auto factor = std::move(factors).Div(next_factors);
+        for (const auto& fac : SquareFreeFactorize(factor)) {
+          result[fac] += j;
         }
-        break;  // factorization is complete!
       }
-      // gcd is already monic
-      Polynom gcd = Gcd(polynom, derivative);
-      // polynom / gcd has no repeating factors
-      for (const auto& factor : SquareFreeFactorize(polynom / gcd)) {
-        ++result[factor];
-      }
-      polynom = gcd;
+      factors = std::move(next_factors);
+      c = std::move(c).Div(factors);
+      ++j;
     }
+    // that means polynom is p-th power
+    if (!c.IsOne()) {
+      auto factors = FactorizeImpl(FieldBaseRoot(c));
+      for (const auto& [factor, power] : factors) {
+        int factor_power = power * Polynom::Element::FieldBase();
+        result[factor] += power * Polynom::Element::FieldBase();
+      }
+    }
+
     total_actions_ = Element::GetActions();
     return result;
   }
@@ -102,7 +115,7 @@ class BerlekampExperiment {
     constexpr int kFieldBase = Element::FieldBase();
     constexpr int kFieldPower = Element::FieldPower();
 
-    std::vector<Element> elements(polynom.GetElements());
+    std::vector<Element> elements(polynom.Get());
     for (size_t i = 0; i < elements.size(); i += kFieldBase) {
       // want to get y that y^p = x
       // consider p is field base, q = p^k is field size
@@ -149,7 +162,7 @@ class BerlekampExperiment {
       }
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
-          Polynom new_factor = Gcd(factor, factorizing - c);
+          Polynom new_factor = factor.Gcd(factorizing.Sub(c));
           // new factor is non trivial
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
@@ -267,14 +280,14 @@ class BerlekampExperiment {
         // here we get that x, done a little weird
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
-        base = Polynom(std::move(tmp)) % factorizing;
+        base = Polynom(std::move(tmp)).Rem(factorizing);
       }
       for (size_t power = 0; power < n; ++power) {
-        auto elems = current.GetElements();
+        auto elems = current.Get();
         for (size_t i = 0; i < elems.size(); ++i) {
           result[power][i] = elems[i];
         }
-        current = current * base % factorizing;
+        current = std::move(current).Mul(base).Rem(factorizing);
       }
     }
     // yA = y

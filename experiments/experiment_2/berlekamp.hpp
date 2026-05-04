@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2025 Andrei Ishutin
+// Copyright (c) 2026 Andrei Ishutin
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ class BerlekampExperiment {
  public:
   inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) {
     std::vector<Factor<Polynom>> result;
-    polynom.MakeMonic();
+    polynom = std::move(polynom).MakeMonic();
     if (polynom.IsZero() || polynom.IsOne()) {
       return {};
     }
@@ -85,12 +85,12 @@ class BerlekampExperiment {
         break;  // factorization is complete!
       }
       // gcd is already monic
-      Polynom gcd = Gcd(polynom, derivative);
+      Polynom gcd = polynom.Gcd(derivative);
       // polynom / gcd has no repeating factors
-      for (const auto& factor : SquareFreeFactorize(polynom / gcd)) {
+      for (const auto& factor : SquareFreeFactorize(std::move(polynom).Div(gcd))) {
         ++result[factor];
       }
-      polynom = gcd;
+      polynom = std::move(gcd);
     }
     total_actions_ = Element::GetActions();
     return result;
@@ -103,7 +103,7 @@ class BerlekampExperiment {
     constexpr int kFieldBase = Element::FieldBase();
     constexpr int kFieldPower = Element::FieldPower();
 
-    std::vector<Element> elements(polynom.GetElements());
+    std::vector<Element> elements(polynom.Get());
     for (size_t i = 0; i < elements.size(); i += kFieldBase) {
       // want to get y that y^p = x
       // consider p is field base, q = p^k is field size
@@ -121,7 +121,7 @@ class BerlekampExperiment {
   }
 
   inline Polynom DoModuloPower(Polynom polynom, const auto& matrix) {
-    auto elements = polynom.GetElements();
+    auto elements = polynom.Get();
     std::vector<Element> result(matrix.size(), Element::Zero());
     for (size_t i = 0; i < elements.size(); ++i) {
       for (size_t j = 0; j < matrix.size(); ++j) {
@@ -156,14 +156,14 @@ class BerlekampExperiment {
         // here we get that x, done a little weird
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
-        base = Polynom(std::move(tmp)) % polynom;
+        base = Polynom(std::move(tmp)).Rem(polynom);
       }
       for (size_t power = 0; power < n; ++power) {
-        auto elems = current.GetElements();
+        auto elems = current.Get();
         for (size_t i = 0; i < elems.size(); ++i) {
           matrix[power][i] = elems[i];
         }
-        current = current * base % polynom;
+        current = std::move(current).Mul(base).Rem(polynom);
       }
     }
     
@@ -175,9 +175,9 @@ class BerlekampExperiment {
     size_t power = 1;
     while (2 * power < factorizing.Size()) {
       current = DoModuloPower(std::move(current), matrix);
-      Polynom gcd = Gcd(factorizing, current - x);
+      Polynom gcd = factorizing.Gcd(current.Sub(x));
       if (gcd.Size() > 1) {
-        factorizing /= gcd;
+        factorizing = std::move(factorizing).Div(gcd);
         if (gcd.Size() == power + 1) {
           result.emplace_back(std::move(gcd));
         } else {
@@ -225,7 +225,7 @@ class BerlekampExperiment {
       }
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
-          Polynom new_factor = Gcd(factor, factorizing - c);
+          Polynom new_factor = factor.Gcd(factorizing.Sub(c));
           // new factor is non trivial
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
@@ -341,14 +341,14 @@ class BerlekampExperiment {
         // here we get that x, done a little weird
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
-        base = Polynom(std::move(tmp)) % factorizing;
+        base = Polynom(std::move(tmp)).Rem(factorizing);
       }
       for (size_t power = 0; power < n; ++power) {
-        auto elems = current.GetElements();
+        auto elems = current.Get();
         for (size_t i = 0; i < elems.size(); ++i) {
           result[power][i] = elems[i];
         }
-        current = current * base % factorizing;
+        current = std::move(current).Mul(base).Rem(factorizing);
       }
     }
     // yA = y
