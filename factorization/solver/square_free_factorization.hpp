@@ -68,17 +68,17 @@ constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
   while (!factors.IsOne()) {
     // next_factors = g_2 ... g_m
     Polynom next_factors = factors.Gcd(c);
-    auto factor = std::move(factors).Div(next_factors);
-    result.emplace_back(factor, j);
-  
+    if (factors != next_factors) {
+      auto factor = std::move(factors).Div(next_factors);
+      result.emplace_back(factor, j);
+    }
     factors = std::move(next_factors);
     c = std::move(c).Div(factors);
-    std::cout << factors.Size() << "\n";
     ++j;
   }
   // that means polynom is p-th power
-  if (!polynom.IsOne()) {
-    auto factors = SquareFreeFactorize(FieldBaseRoot(polynom));
+  if (!c.IsOne()) {
+    auto factors = SquareFreeFactorize(FieldBaseRoot(c));
     for (const auto& [factor, power] : factors) {
       int factor_power = power * Polynom::Element::FieldBase();
       result.emplace_back(factor, factor_power);
