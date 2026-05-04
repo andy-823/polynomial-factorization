@@ -321,12 +321,12 @@ class SimplePolynomial {
 
   [[nodiscard]]
   SimplePolynomial Derivative() && {
-    int n = static_cast<int>(data_.size());
+    size_t n = data_.size();
     if (n <= 1) {
       data_.clear();
       return std::move(*this);
     }
-    for (int i = 1; i < n; ++i) {
+    for (size_t i = 1; i < n; ++i) {
       data_[i - 1] = Element::AsPolyConstant(i) * data_[i];
     }
     data_.pop_back();
@@ -335,7 +335,7 @@ class SimplePolynomial {
   }
 
   [[nodiscard]]
-  std::vector<Element> Get() const & {
+  const std::vector<Element>& Get() const & {
     return data_;
   }
 
@@ -351,7 +351,7 @@ class SimplePolynomial {
 
   [[nodiscard]]
   bool IsZero() const noexcept {
-    return data_.size() == 0;
+    return data_.empty();
   }
 
   [[nodiscard]]
@@ -386,8 +386,8 @@ class SimplePolynomial {
 
   // Both are nonzero
   SimplePolynomial& MulInPlace(const SimplePolynomial& rhs) {
-    const int n = static_cast<int>(data_.size());
-    const int m = static_cast<int>(rhs.data_.size());
+    const size_t n = data_.size();
+    const size_t m = rhs.data_.size();
 
     // multiplication by constant
     if (m == 1) {
@@ -425,8 +425,8 @@ class SimplePolynomial {
 
   // assume division is not by zero
   SimplePolynomial& DivInPlace(const SimplePolynomial& rhs) {
-    const int n = static_cast<int>(data_.size());
-    const int m = static_cast<int>(rhs.data_.size());
+    const size_t n = data_.size();
+    const size_t m = rhs.data_.size();
 
     if (n < m) {
       data_.clear();
@@ -436,7 +436,7 @@ class SimplePolynomial {
       return DivInPlace(rhs.data_[0]);
     }
     const Element inv_lead = rhs.data_.back().Inverse();
-    const int quotient_size = n - m + 1;
+    const size_t quotient_size = n - m + 1;
     std::vector<Element> quotient(quotient_size);
 
     Element* a = data_.data();
@@ -447,13 +447,13 @@ class SimplePolynomial {
     //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
     // minus
     //                           b[0] + ... + b[n - k]
-    for (int i = quotient_size - 1; i >= 0; --i) {
+    for (size_t i = quotient_size; i-- > 0;) {
       Element coeff = a[i + m - 1] * inv_lead;
       quotient[i] = coeff;
       if (coeff == Element::Zero()) [[unlikely]] {
         continue;
       }
-      for (int j = 0; j < m - 1; ++j) {
+      for (size_t j = 0; j < m - 1; ++j) {
         a[i + j] -= coeff * b[j];
       }
     }
@@ -471,8 +471,8 @@ class SimplePolynomial {
 
   // assume division is not by zero
   SimplePolynomial& RemInPlace(const SimplePolynomial& rhs) {
-    const int n = static_cast<int>(data_.size());
-    const int m = static_cast<int>(rhs.data_.size());
+    const size_t n = data_.size();
+    const size_t m = rhs.data_.size();
 
     if (n < m) {
       return *this;
@@ -482,7 +482,8 @@ class SimplePolynomial {
       return *this;
     }
     const Element inv_lead = rhs.data_.back().Inverse();
-    const int quotient_size = n - m + 1;
+    // n >= m -> quotient_size >= 1
+    const size_t quotient_size = n - m + 1;
     Element* a = data_.data();
     const Element* b = rhs.data_.data();
     // will perform naive polinomial division
@@ -491,12 +492,12 @@ class SimplePolynomial {
     //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
     // minus
     //                           b[0] + ... + b[n - k]
-    for (int i = quotient_size - 1; i >= 0; --i) {
+    for (size_t i = quotient_size; i-- > 0;) {
       Element coeff = a[i + m - 1] * inv_lead;
       if (coeff == Element::Zero()) [[unlikely]] {
         continue;
       }
-      for (int j = 0; j < m - 1; ++j) {
+      for (size_t j = 0; j < m - 1; ++j) {
         a[i + j] -= coeff * b[j];
       }
     }
@@ -509,8 +510,8 @@ class SimplePolynomial {
   [[nodiscard]]
   std::pair<SimplePolynomial, SimplePolynomial> 
   DivRemInPlace(const SimplePolynomial& rhs) && {
-    const int n = static_cast<int>(data_.size());
-    const int m = static_cast<int>(rhs.data_.size());
+    const size_t n = data_.size();
+    const size_t m = rhs.data_.size();
     if (n < m) {
       RemoveLeadingZeros();
       return {SimplePolynomial(), std::move(*this)};
@@ -521,18 +522,18 @@ class SimplePolynomial {
       return {std::move(*this), SimplePolynomial()};
     }
     const Element inv_lead = rhs.data_.back().Inverse();
-    const int quotient_size = n - m + 1;
+    const size_t quotient_size = n - m + 1;
     std::vector<Element> quotient(quotient_size);
 
     Element* a = data_.data();
     const Element* b = rhs.data_.data();
-    for (int i = quotient_size - 1; i >= 0; --i) {
+    for (size_t i = quotient_size; i-- > 0;) {
       Element coeff = a[i + m - 1] * inv_lead;
       quotient[i] = coeff;
       if (coeff == Element::Zero()) [[unlikely]] {
         continue;
       }
-      for (int j = 0; j < m - 1; ++j) {
+      for (size_t j = 0; j < m - 1; ++j) {
         a[i + j] -= coeff * b[j];
       }
     }
