@@ -17,11 +17,15 @@ constexpr auto AllElements() {
 
 template <concepts::GaloisFieldElement Element, typename RandomGen>
 Element GenElement(RandomGen& gen) {
-  // TODO: use std discrete distribution
-  // assume field to be relatively small
-  constexpr static auto elements = AllElements<Element>();
-  size_t index = gen() %  elements.size();
-  return elements[index];
+  using T = typename Element::Coefficient;
+  constexpr auto kFieldBase = Element::FieldBase();
+  constexpr auto kFieldPower = Element::FieldPower();
+  
+  std::array<T, kFieldPower> result;
+  for (auto& c : result) {
+    c = gen() % kFieldBase;
+  }
+  return result;
 }
 
 // template because, maybe, different polynoms want different sizes

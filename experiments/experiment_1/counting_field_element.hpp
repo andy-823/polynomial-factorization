@@ -45,14 +45,27 @@ class CountingFieldElement {
  public:
   using Value = typename Field::Value;
   constexpr static bool kCounting = true;
+  constexpr static uint32_t kFieldBase = Field::FieldBase();
+  constexpr static uint32_t kFieldPower = Field::FieldPower();
+
+ public:
+  using Coefficient = typename Field::Coefficient;
 
  public:
   constexpr CountingFieldElement() = default;
 
-  template <typename T>
+  template <std::convertible_to<Coefficient> T = Coefficient>
   constexpr CountingFieldElement(T value)
-      : value_(std::forward<T>(value)) {
-    static_assert(std::constructible_from<Value, T>);
+      : value_(kField.Encode(value)) {
+  }
+
+  template <std::convertible_to<Coefficient> T = Coefficient>
+  constexpr CountingFieldElement(const std::array<T, kFieldPower>& value) 
+      : value_(kField.Encode(Convert(value))) {
+  }
+
+  constexpr std::array<Coefficient, kFieldPower> Get() const {
+    return kField.Decode(value_);
   }
 
   constexpr CountingFieldElement(const CountingFieldElement&) = default;
@@ -71,14 +84,6 @@ class CountingFieldElement {
 
   constexpr static CountingFieldElement One() {
     return CountingFieldElement(kField.One());
-  }
-
-  constexpr static CountingFieldElement AsPolyConstant(Value value) {
-    return kField.FieldValueFromConstant(value);
-  }
-
-  constexpr Value Get() const {
-    return value_;
   }
 
   static void ResetActions() {
@@ -105,7 +110,7 @@ class CountingFieldElement {
 
   constexpr CountingFieldElement operator-() const {
     Action();
-    return CountingFieldElement(kField.Negative(value_));
+    return Construct(kField.Negative(value_));
   }
 
   constexpr CountingFieldElement& operator*=(
@@ -124,13 +129,13 @@ class CountingFieldElement {
 
   constexpr CountingFieldElement Inverse() const {
     Action();
-    return CountingFieldElement(kField.Inverse(value_));
+    return Construct(kField.Inverse(value_));
   }
 
   template <typename Power>
   constexpr CountingFieldElement Pow(Power power) const {
     Action();
-    return CountingFieldElement(kField.Pow(value_, power));
+    return Construct(kField.Pow(value_, power));
   }
 
   constexpr static uint32_t FieldBase() {
@@ -143,17 +148,38 @@ class CountingFieldElement {
 
   // std vector is temporary option
   constexpr static std::vector<CountingFieldElement> AllFieldElements() {
-    Value current = kField.FirstFieldValue();
+    constexpr uint64_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+
     std::vector<CountingFieldElement> result;
-    result.emplace_back(current);
-    while (current != kField.LastFieldValue()) {
-      current = kField.NextFieldValue(current);
-      result.emplace_back(current);
+    std::array<Coefficient, kFieldPower> coeffs{};
+    for (uint64_t i = 0; i < kFieldSize; ++i) {
+      uint64_t val = i;
+      for (size_t i = 0; i < kFieldPower; ++i) {
+        coeffs[i] = static_cast<Coefficient>(val % kFieldBase);
+        val /= kFieldBase;
+      }
+      result.emplace_back(CountingFieldElement(coeffs));
     }
     return result;
   }
 
  private:
+  template <std::convertible_to<Coefficient> T>
+  constexpr std::array<Coefficient, kFieldPower>
+  Convert(const std::array<T, kFieldPower>& value) {
+    std::array<Coefficient, kFieldPower> result;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result[i] = value[i];
+    }
+    return result;
+  }
+
+  static CountingFieldElement Construct(Value value) {
+    CountingFieldElement result;
+    result.value_ = value;
+    return result;
+  }
+
   constexpr static Field kField{};
   Value value_;
 };

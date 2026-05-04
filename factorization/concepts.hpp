@@ -29,7 +29,11 @@
 namespace factorization::concepts {
 
 template <typename Field>
-concept GaloisField = requires (Field field, Field::Value value) {
+concept GaloisField = requires (const Field& field,
+                                typename Field::Value value,
+                                typename Field::Coefficient coef) {
+  typename Field::Coefficient;
+  requires std::integral<typename Field::Coefficient>;
   // return addition and multiplication neutral elements respectively
   { field.Zero() } -> std::same_as<typename Field::Value>;
   { field.One() } -> std::same_as<typename Field::Value>;
@@ -45,26 +49,27 @@ concept GaloisField = requires (Field field, Field::Value value) {
   { Field::FieldBase() } -> std::integral;
   { Field::FieldPower() } -> std::integral;
 
-  { field.FieldValueFromConstant(value) } -> std::same_as<typename Field::Value>;
-
-  // need to iterate over all field elements
-  { field.FirstFieldValue() } -> std::same_as<typename Field::Value>;
-  { field.NextFieldValue(value) } -> std::same_as<typename Field::Value>;
-  { field.LastFieldValue() } -> std::same_as<typename Field::Value>;
+  { field.Encode(std::array<typename Field::Coefficient, Field::FieldPower()>())}
+    -> std::same_as<typename Field::Value>;
+  { field.Encode(coef)} -> std::same_as<typename Field::Value>;
+  { field.Decode(value) }
+    -> std::same_as<std::array<typename Field::Coefficient, Field::FieldPower()>>;
 };
 
 template <typename Element>
-concept GaloisFieldElement = requires (Element element, Element::Value value) {
-  requires std::copy_constructible<Element>;
+concept GaloisFieldElement = requires (Element element,
+                                       typename Element::Coefficient coeff) {
+  requires std::semiregular<Element>;
   requires std::totally_ordered<Element>;
 
-  { element = element } -> std::same_as<Element&>;
+  requires std::constructible_from<std::array<typename Element::Coefficient, Element::FieldPower()>>;
+  requires std::constructible_from<typename Element::Coefficient>;
 
   { Element::One() } -> std::same_as<Element>;
   { Element::Zero() } -> std::same_as<Element>;
-  { Element::AsPolyConstant(value) } -> std::same_as<Element>;
   // get raw value of galois field element
-  { element.Get() } -> std::same_as<typename Element::Value>;
+  { element.Get() }
+    -> std::same_as<std::array<typename Element::Coefficient, Element::FieldPower()>>;
 
   // arithmetic operations that can be performed
   { element += element } -> std::same_as<Element&>;
@@ -98,6 +103,8 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value) {
   requires std::semiregular<Poly>;
   requires std::totally_ordered<Poly>;
 
+  // Here methods are used instead of operators
+  // It was made for better flexibility
   { poly.Add(poly) } -> std::same_as<Poly>;
   { poly.Sub(poly) } -> std::same_as<Poly>;
   { poly.Mul(poly) } -> std::same_as<Poly>;

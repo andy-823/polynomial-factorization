@@ -20,9 +20,12 @@ struct Test {
 
 template <concepts::GaloisField GaloisField, typename Int>
 void RunTests(const std::vector<Test<Int>>& tests) {
+  using Value = typename GaloisField::Value;
   GaloisField field{};
 
   for (const Test<Int>& test : tests) {
+    REQUIRE(field.Encode(field.Decode(Value(test.first))) == test.first);
+
     switch (test.type) {
       case QueryType::kAdd:
         REQUIRE(field.Add(test.first, test.second) == test.expected);

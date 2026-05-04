@@ -55,6 +55,7 @@ template <uint32_t kFieldBase,
 class LogBasedField {
  public:
   using Value = Int;
+  using Coefficient = Int;
 
  public:
   constexpr LogBasedField() {
@@ -107,6 +108,29 @@ class LogBasedField {
     for (uint32_t i = 0; i < kFieldSize - 1; ++i) {
       log_to_poly_[i + kFieldSize - 1] = log_to_poly_[i];
     }
+  }
+
+  constexpr Int Encode(const std::array<Coefficient, kFieldPower>& arr) const {
+    Int result = 0;
+    Int base = 1;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result += static_cast<Int>(arr[i]) % kFieldBase * base;
+      base *= 2 * kFieldBase;
+    }
+    return result;
+  }
+
+  constexpr Int Encode(Coefficient value) const {
+    return value % kFieldBase;
+  }
+
+  constexpr std::array<Coefficient, kFieldPower> Decode(Int value) const {
+    std::array<Coefficient, kFieldPower> result;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result[i] = static_cast<Coefficient>(value) % kFieldBase;
+      value /= 2 * kFieldBase;
+    }
+    return result;
   }
 
   constexpr Int Zero() const {
@@ -191,43 +215,6 @@ class LogBasedField {
     return kFieldPower;
   }
 
-  //! Return constant (if to use polynomial form)
-  constexpr Int FieldValueFromConstant(Int value) const {
-    return value % kFieldBase;
-  }
-
-  //! First to iterate over field values
-  constexpr Int FirstFieldValue() const {
-    return 0;
-  }
-
-  //! Next to iterate over field value
-  // if value is last one behaviour is undefined
-  // O((2p)^k) summary complexity
-  constexpr Int NextFieldValue(Int value) const {
-    ++value;
-    // here I use property
-    // that correct field value will not change in this table 
-    while (value != to_good_view_[value]) {
-      ++value;
-    }
-    return value;
-  }
-
-  //! Last to iterate over field values
-  // I hope it will be calculated during compilation
-  constexpr Int LastFieldValue() const {
-    constexpr Int result = [] {
-      Int result = 0;
-      for (int i = 0; i < kFieldPower; ++i) {
-        result *= 2 * kFieldBase;
-        result += kFieldBase - 1;
-      };
-      return result;
-    }();
-    return result;
-  }
-
  private:
   constexpr static int kFieldSize{utils::BinPow(kFieldBase, kFieldPower)};
   constexpr static int kElemsCount{utils::BinPow(2 * kFieldBase, kFieldPower)};
@@ -256,6 +243,7 @@ template <uint32_t kFieldPower,
 class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
  public:
   using Value = Int;
+  using Coefficient = Int;
 
  public:
   constexpr LogBasedField() {
@@ -279,6 +267,29 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     for (uint32_t i = 0; i < kFieldSize; ++i) {
       log_to_poly_[i + kFieldSize - 1] = log_to_poly_[i];
     }
+  }
+
+  constexpr Int Encode(const std::array<Coefficient, kFieldPower>& arr) const {
+    Int result = 0;
+    Int base = 1;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result += static_cast<Int>(arr[i]) % 2 * base;
+      base *= 2;
+    }
+    return result;
+  }
+
+  constexpr Int Encode(Coefficient value) const {
+    return value & 1;
+  }
+
+  constexpr std::array<Coefficient, kFieldPower> Decode(Int value) const {
+    std::array<Coefficient, kFieldPower> result;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result[i] = static_cast<Coefficient>(value & 1);
+      value >>= 1;
+    }
+    return result;
   }
 
   constexpr Int Zero() const {
@@ -342,22 +353,6 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
 
   constexpr static uint32_t FieldPower() {
     return kFieldPower;
-  }
-
-  constexpr Int FieldValueFromConstant(Int value) const {
-    return value & 1;
-  }
-
-  constexpr Int FirstFieldValue() const {
-    return 0;
-  }
-
-  constexpr Int NextFieldValue(Int value) const {
-    return ++value;
-  }
-
-  constexpr Int LastFieldValue() const {
-    return kFieldSize - 1;
   }
 
  private:

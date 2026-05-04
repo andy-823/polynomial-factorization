@@ -35,16 +35,28 @@ namespace factorization::galois_field {
  */
 template <concepts::GaloisField Field>
 class FieldElementWrapper {
- public:
   using Value = typename Field::Value;
+  constexpr static uint32_t kFieldBase = Field::FieldBase();
+  constexpr static uint32_t kFieldPower = Field::FieldPower();
+
+ public:
+  using Coefficient = typename Field::Coefficient;
 
  public:
   constexpr FieldElementWrapper() = default;
 
-  template <typename T>
+  template <std::convertible_to<Coefficient> T = Coefficient>
   constexpr FieldElementWrapper(T value)
-      : value_(std::forward<T>(value)) {
-    static_assert(std::constructible_from<Value, T>);
+      : value_(kField.Encode(value)) {
+  }
+
+  template <std::convertible_to<Coefficient> T = Coefficient>
+  constexpr FieldElementWrapper(const std::array<T, kFieldPower>& value) 
+      : value_(kField.Encode(Convert(value))) {
+  }
+
+  constexpr std::array<Coefficient, kFieldPower> Get() const {
+    return kField.Decode(value_);
   }
 
   constexpr FieldElementWrapper(const FieldElementWrapper&) = default;
@@ -58,19 +70,11 @@ class FieldElementWrapper {
   constexpr auto operator<=>(const FieldElementWrapper&) const = default;
 
   constexpr static FieldElementWrapper Zero() {
-    return FieldElementWrapper(kField.Zero());
+    return Construct(kField.Zero());
   }
 
   constexpr static FieldElementWrapper One() {
-    return FieldElementWrapper(kField.One());
-  }
-
-  constexpr static FieldElementWrapper AsPolyConstant(Value value) {
-    return kField.FieldValueFromConstant(value);
-  }
-
-  constexpr Value Get() const {
-    return value_;
+    return Construct(kField.One());
   }
 
   constexpr FieldElementWrapper& operator+=(
@@ -86,7 +90,7 @@ class FieldElementWrapper {
   }
 
   constexpr FieldElementWrapper operator-() const {
-    return FieldElementWrapper(kField.Negative(value_));
+    return Construct(kField.Negative(value_));
   }
 
   constexpr FieldElementWrapper& operator*=(
@@ -102,12 +106,12 @@ class FieldElementWrapper {
   }
 
   constexpr FieldElementWrapper Inverse() const {
-    return FieldElementWrapper(kField.Inverse(value_));
+    return Construct(kField.Inverse(value_));
   }
 
   template <typename Power>
   constexpr FieldElementWrapper Pow(Power power) const {
-    return FieldElementWrapper(kField.Pow(value_, power));
+    return Construct(kField.Pow(value_, power));
   }
 
   constexpr static uint32_t FieldBase() {
@@ -120,18 +124,40 @@ class FieldElementWrapper {
 
   // std vector is temporary option
   constexpr static std::vector<FieldElementWrapper> AllFieldElements() {
-    Value current = kField.FirstFieldValue();
+    constexpr uint64_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+
     std::vector<FieldElementWrapper> result;
-    result.emplace_back(current);
-    while (current != kField.LastFieldValue()) {
-      current = kField.NextFieldValue(current);
-      result.emplace_back(current);
+    std::array<Coefficient, kFieldPower> coeffs{};
+    for (uint64_t i = 0; i < kFieldSize; ++i) {
+      uint64_t val = i;
+      for (size_t i = 0; i < kFieldPower; ++i) {
+        coeffs[i] = static_cast<Coefficient>(val % kFieldBase);
+        val /= kFieldBase;
+      }
+      result.emplace_back(FieldElementWrapper(coeffs));
     }
     return result;
   }
 
  private:
+  template <std::convertible_to<Coefficient> T>
+  constexpr std::array<Coefficient, kFieldPower>
+  Convert(const std::array<T, kFieldPower>& value) {
+    std::array<Coefficient, kFieldPower> result;
+    for (size_t i = 0; i < kFieldPower; ++i) {
+      result[i] = value[i];
+    }
+    return result;
+  }
+
+  static FieldElementWrapper Construct(Value value) {
+    FieldElementWrapper result;
+    result.value_ = value;
+    return result;
+  }
+
   constexpr static Field kField{};
+
   Value value_;
 };
 

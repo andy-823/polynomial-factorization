@@ -314,7 +314,7 @@ class SimplePolynomial {
     }
     std::vector<Element> result(data_.size() - 1);
     for (size_t i = 1; i < data_.size(); ++i) {
-      result[i - 1] = Element::AsPolyConstant(i) * data_[i];
+      result[i - 1] = Element(i) * data_[i];
     }
     return SimplePolynomial(std::move(result));
   }
@@ -327,7 +327,7 @@ class SimplePolynomial {
       return std::move(*this);
     }
     for (size_t i = 1; i < n; ++i) {
-      data_[i - 1] = Element::AsPolyConstant(i) * data_[i];
+      data_[i - 1] = Element(i) * data_[i];
     }
     data_.pop_back();
     RemoveLeadingZeros();

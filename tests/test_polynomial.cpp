@@ -60,10 +60,11 @@ TEST_CASE("SimplePolynomial") {
     }
 
     {
-      Poly poly({3, 3, 3, 3});
+      using Vec = std::vector<Element>;
+      Poly poly(Vec(4, Element({1, 1, 0})));
 
-      REQUIRE(poly.Mul(Element{2}) == Poly({6, 6, 6, 6}));
-      REQUIRE(poly.Div(Element{3}) == Poly({1, 1, 1, 1}));
+      REQUIRE(poly.Mul(Element({0, 1, 0})) == Poly(Vec(4, Element({0, 1, 1}))));
+      REQUIRE(poly.Div(Element({1, 1, 0})) == Poly(Vec(4, Element::One())));
     }
   }
 
@@ -79,23 +80,38 @@ TEST_CASE("SimplePolynomial") {
     }
 
     {
-      Poly poly({3, 3, 3, 3});
-      REQUIRE(poly.MakeMonic() == Poly({1, 1, 1, 1}));
+      using Vec = std::vector<Element>;
+      Poly poly(Vec(4, Element({1, 1, 0})));
+      REQUIRE(poly.MakeMonic() == Poly(Vec(4, Element::One())));
     }
 
     {
-      Poly first({1, 2, 3, 4, 5, 6, 7});
-      Poly second({0, 1, 2, 3, 4, 5, 6});
+      using Vec = std::vector<Element>;
+      Poly first({Element({1, 0, 0}), Element({0, 1, 0}),
+                  Element({1, 1, 0}), Element({0, 0, 1}),
+                  Element({1, 0, 1}), Element({0, 1, 1}),
+                  Element({1, 1, 1})});
+      Poly second({Element({0, 0, 0}), Element({1, 0, 0}),
+                   Element({0, 1, 0}), Element({1, 1, 0}),
+                   Element({0, 0, 1}), Element({1, 0, 1}),
+                   Element({0, 1, 1})});
 
       REQUIRE(second < first );
 
-      first = Poly({1, 2, 3, 4, 5, 6, 7});
-      second = Poly({1, 1, 3, 3, 4, 6, 7});
+      first = Poly({Element({1, 0, 0}), Element({0, 1, 0}),
+                       Element({1, 1, 0}), Element({0, 0, 1}),
+                       Element({1, 0, 1}), Element({0, 1, 1}),
+                       Element({1, 1, 1})});
+      second = Poly({Element({1, 0, 0}), Element({1, 0, 0}),
+                     Element({1, 1, 0}), Element({1, 1, 0}),
+                     Element({0, 0, 1}), Element({0, 1, 1}),
+                     Element({1, 1, 1})});
 
       REQUIRE(second < first );
 
-      first = Poly({1, 2, 3});
-      second = Poly({1, 2});
+      first = Poly({Element({1, 0, 0}), Element({0, 1, 0}),
+                    Element({0, 1, 1})});
+      second = Poly({Element({1, 0, 0}), Element({0, 1, 0})});
 
       REQUIRE(second < first);
     }
