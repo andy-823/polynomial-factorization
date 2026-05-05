@@ -335,7 +335,7 @@ class SimplePolynomial {
   }
 
   [[nodiscard]]
-  const std::vector<Element>& Get() const & {
+  std::vector<Element> Get() const & {
     return data_;
   }
 

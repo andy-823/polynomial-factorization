@@ -42,6 +42,43 @@ class FieldElementWrapper {
  public:
   using Coefficient = typename Field::Coefficient;
 
+ private:
+  struct ElementsRange {
+    constexpr static uint64_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+
+    struct Iterator {
+      using iterator_concept = std::input_iterator_tag;
+      using value_type = FieldElementWrapper;
+      using difference_type = std::ptrdiff_t;
+
+      constexpr value_type operator*() const {
+        std::array<Coefficient, kFieldPower> coeffs{};
+        uint32_t val = value;
+        for (size_t i = 0; i < kFieldPower; ++i) {
+          coeffs[i] = static_cast<Coefficient>(val % kFieldBase);
+          val /= kFieldBase;
+        }
+        return FieldElementWrapper(coeffs);
+      }
+
+      constexpr Iterator& operator++() {
+        ++value;
+        return *this;
+      }
+
+      constexpr void operator++(int) {
+        ++(*this);
+      }
+
+      constexpr bool operator==(const Iterator&) const = default;
+
+      uint32_t value;
+    };
+
+    constexpr Iterator begin() const { return {0}; }
+    constexpr Iterator end() const { return {kFieldSize}; }
+  };
+
  public:
   constexpr FieldElementWrapper() = default;
 
@@ -114,29 +151,19 @@ class FieldElementWrapper {
     return Construct(kField.Pow(value_, power));
   }
 
+  [[nodiscard]]
   constexpr static uint32_t FieldBase() {
     return Field::FieldBase();
   }
 
+  [[nodiscard]]
   constexpr static uint32_t FieldPower() {
     return Field::FieldPower();
   }
 
-  // std vector is temporary option
-  constexpr static std::vector<FieldElementWrapper> AllFieldElements() {
-    constexpr uint64_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
-
-    std::vector<FieldElementWrapper> result;
-    std::array<Coefficient, kFieldPower> coeffs{};
-    for (uint64_t i = 0; i < kFieldSize; ++i) {
-      uint64_t val = i;
-      for (size_t i = 0; i < kFieldPower; ++i) {
-        coeffs[i] = static_cast<Coefficient>(val % kFieldBase);
-        val /= kFieldBase;
-      }
-      result.emplace_back(FieldElementWrapper(coeffs));
-    }
-    return result;
+  [[nodiscard]]
+  constexpr static ElementsRange AllFieldElements() {
+    return {};
   }
 
  private:
@@ -156,8 +183,8 @@ class FieldElementWrapper {
     return result;
   }
 
+ private:
   constexpr static Field kField{};
-
   Value value_;
 };
 

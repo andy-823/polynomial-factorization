@@ -124,7 +124,7 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value) {
   // This method has to follow this invariant
   //   a[0] + a[1] x + a[2] x^2 + ... + a[n] x^n
   // From lower power to higher
-  { poly.Get() } -> std::convertible_to<std::vector<typename Poly::Element>>;
+  { poly.Get() } -> std::same_as<std::vector<typename Poly::Element>>;
   // return polynom power + 1 if polynom is nonzero
   // otherwise return zero
   { poly.Size() } -> std::integral;
