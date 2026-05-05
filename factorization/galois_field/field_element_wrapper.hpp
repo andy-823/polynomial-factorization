@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -44,12 +44,13 @@ class FieldElementWrapper {
 
  private:
   struct ElementsRange {
-    constexpr static uint64_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+    constexpr static uint64_t kFieldSize =
+        utils::BinPow(kFieldBase, kFieldPower);
 
     struct Iterator {
-      using iterator_concept = std::input_iterator_tag;
-      using value_type = FieldElementWrapper;
-      using difference_type = std::ptrdiff_t;
+      using iterator_concept = std::input_iterator_tag;  // NOLINT
+      using value_type = FieldElementWrapper;            // NOLINT
+      using difference_type = std::ptrdiff_t;            // NOLINT
 
       constexpr value_type operator*() const {
         std::array<Coefficient, kFieldPower> coeffs{};
@@ -75,20 +76,25 @@ class FieldElementWrapper {
       uint32_t value;
     };
 
-    constexpr Iterator begin() const { return {0}; }
-    constexpr Iterator end() const { return {kFieldSize}; }
+    constexpr Iterator begin() const {
+      return {0};
+    }  // NOLINT
+    constexpr Iterator end() const {
+      return {kFieldSize};
+    }  // NOLINT
   };
 
  public:
   constexpr FieldElementWrapper() = default;
 
   template <std::convertible_to<Coefficient> T = Coefficient>
-  constexpr FieldElementWrapper(T value)
+  explicit constexpr FieldElementWrapper(T value)
       : value_(kField.Encode(value)) {
   }
 
   template <std::convertible_to<Coefficient> T = Coefficient>
-  constexpr FieldElementWrapper(const std::array<T, kFieldPower>& value) 
+  explicit constexpr FieldElementWrapper(
+      const std::array<T, kFieldPower>& value)
       : value_(kField.Encode(Convert(value))) {
   }
 
@@ -99,7 +105,8 @@ class FieldElementWrapper {
   constexpr FieldElementWrapper(const FieldElementWrapper&) = default;
   constexpr FieldElementWrapper(FieldElementWrapper&&) = default;
 
-  constexpr FieldElementWrapper& operator=(const FieldElementWrapper&) = default;
+  constexpr FieldElementWrapper& operator=(const FieldElementWrapper&) =
+      default;
   constexpr FieldElementWrapper& operator=(FieldElementWrapper&&) = default;
 
   ~FieldElementWrapper() = default;
@@ -114,14 +121,12 @@ class FieldElementWrapper {
     return Construct(kField.One());
   }
 
-  constexpr FieldElementWrapper& operator+=(
-      const FieldElementWrapper& other) {
+  constexpr FieldElementWrapper& operator+=(const FieldElementWrapper& other) {
     value_ = kField.Add(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper& operator-=(
-      const FieldElementWrapper& other) {
+  constexpr FieldElementWrapper& operator-=(const FieldElementWrapper& other) {
     value_ = kField.Sub(value_, other.value_);
     return *this;
   }
@@ -130,14 +135,12 @@ class FieldElementWrapper {
     return Construct(kField.Negative(value_));
   }
 
-  constexpr FieldElementWrapper& operator*=(
-      const FieldElementWrapper& other) {
+  constexpr FieldElementWrapper& operator*=(const FieldElementWrapper& other) {
     value_ = kField.Multiply(value_, other.value_);
     return *this;
   }
 
-  constexpr FieldElementWrapper& operator/=(
-      const FieldElementWrapper& other) {
+  constexpr FieldElementWrapper& operator/=(const FieldElementWrapper& other) {
     value_ = kField.Divide(value_, other.value_);
     return *this;
   }
@@ -168,8 +171,8 @@ class FieldElementWrapper {
 
  private:
   template <std::convertible_to<Coefficient> T>
-  constexpr std::array<Coefficient, kFieldPower>
-  Convert(const std::array<T, kFieldPower>& value) {
+  constexpr std::array<Coefficient, kFieldPower> Convert(
+      const std::array<T, kFieldPower>& value) {
     std::array<Coefficient, kFieldPower> result;
     for (size_t i = 0; i < kFieldPower; ++i) {
       result[i] = value[i];

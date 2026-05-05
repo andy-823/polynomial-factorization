@@ -62,9 +62,9 @@ void RunTests(const std::vector<Test<Value, kPower>>& tests) {
         REQUIRE(first.Inverse() == expected);
         break;
 
-      // case QueryType::kPow:
-      //   REQUIRE(first.Pow(test.second) == expected);
-      //   break;
+        // case QueryType::kPow:
+        //   REQUIRE(first.Pow(test.second) == expected);
+        //   break;
 
       default:
         throw std::runtime_error("Unexpected query type");
@@ -139,10 +139,17 @@ TEST_CASE("FieldElementWrapper") {
   STATIC_REQUIRE(Element::FieldBase() == 3);
   STATIC_REQUIRE(Element::FieldPower() == 2);
 
-  std::vector<std::array<Int, 2>> elements({
-      {0, 0}, {1, 0}, {2, 0}, {0, 1}, {1, 1},
-      {2, 1}, {0, 2}, {1, 2}, {2, 2}
-    });
+  std::vector<Element> elements({
+      Element({0, 0}),
+      Element({1, 0}),
+      Element({2, 0}),
+      Element({0, 1}),
+      Element({1, 1}),
+      Element({2, 1}),
+      Element({0, 2}),
+      Element({1, 2}),
+      Element({2, 2}),
+  });
   CHECK_THAT(Element::AllFieldElements(), RangeEquals(elements));
 
   RunTests<Element>(tests);

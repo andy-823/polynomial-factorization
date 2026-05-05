@@ -7,12 +7,12 @@ namespace factorization {
 
 template <concepts::GaloisFieldElement Element>
 constexpr auto AllElements() {
-  constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
-                                           Element::FieldPower());
+  constexpr int kFieldSize =
+      utils::BinPow(Element::FieldBase(), Element::FieldPower());
   auto elements_range = Element::AllFieldElements();
   std::array<Element, kFieldSize> result{};
   std::copy(elements_range.begin(), elements_range.end(), result.begin());
-  return result;
+  return Element(result);
 }
 
 template <concepts::GaloisFieldElement Element, typename RandomGen>
@@ -20,12 +20,12 @@ Element GenElement(RandomGen& gen) {
   using T = typename Element::Coefficient;
   constexpr auto kFieldBase = Element::FieldBase();
   constexpr auto kFieldPower = Element::FieldPower();
-  
+
   std::array<T, kFieldPower> result;
   for (auto& c : result) {
     c = gen() % kFieldBase;
   }
-  return result;
+  return Element(result);
 }
 
 // template because, maybe, different polynoms want different sizes
@@ -51,4 +51,4 @@ Poly GenPoly(RandomGen& gen) {
   } while (true);
 }
 
-}  // namespace factoriation
+}  // namespace factorization

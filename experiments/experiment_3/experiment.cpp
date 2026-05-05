@@ -9,7 +9,7 @@
 
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
-#include <factorization/polynomial/simple_polynomial.hpp>
+#include <factorization/polynomial/naive_polynomial.hpp>
 #include <factorization/parallel/thread_pool.hpp>
 #include <factorization/parallel/wait_group.hpp>
 #include <factorization/solver/berlekamp.hpp>
@@ -30,9 +30,9 @@ struct ExperimentParams {
 template <typename RandomGen>
 class MultithreadRandomGen {
  public:
-  using result_type = typename RandomGen::result_type;
+  using result_type = typename RandomGen::result_type;  // NOLINT
 
-  void seed(result_type seed) {
+  void seed(result_type seed) {  // NOLINT
     lock_.lock();
     gen_.seed(seed);
     lock_.unlock();
@@ -51,11 +51,13 @@ class MultithreadRandomGen {
 };
 
 template <concepts::GaloisField Field, typename RandomGen>
-void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen& gen) {
+void RunExperiment(std::ostream& out, const ExperimentParams& params,
+                   RandomGen& gen) {
   using Element = galois_field::FieldElementWrapper<Field>;
-  using Poly = polynomial::SimplePolynomial<Element>;
+  using Poly = polynomial::NaivePolynomial<Element>;
 
-  constexpr int kFieldSize = utils::BinPow(Field::FieldBase(), Field::FieldPower());
+  constexpr int kFieldSize =
+      utils::BinPow(Field::FieldBase(), Field::FieldPower());
 
   parallel::ThreadPool runtime(params.thread_count);
   parallel::WaitGroup wg;
@@ -66,7 +68,7 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
   out << kFieldSize << "\t\t";
   wg.Add(params.test_runs);
   for (size_t test = 0; test < params.test_runs; ++test) {
-    parallel::SubmitTask(&runtime, [&]{    
+    parallel::SubmitTask(&runtime, [&] {
       solver::BerlekampExperiment<Poly> solver;
 
       RandomGen local_gen;
@@ -82,7 +84,7 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
   wg.Wait();
   for (const auto& count : counts) {
     double avg = static_cast<double>(count.load());
-    out << std::setprecision(3) << std::fixed << avg / params.test_runs  << "\t";
+    out << std::setprecision(3) << std::fixed << avg / params.test_runs << "\t";
   }
   out << "\n";
 
@@ -91,22 +93,26 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params, RandomGen&
 
 int main() {
   // https://www.partow.net/programming/polynomials/index.html
+  // NOLINTBEGIN
   using GF2_1 = galois_field::LogBasedField<2, 1, {1, 1}>;
   using GF2_2 = galois_field::LogBasedField<2, 2, {1, 1, 1}>;
-  using GF2_3 = galois_field::LogBasedField<2, 3, {1, 1, 0 , 1}>;
+  using GF2_3 = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
   using GF2_4 = galois_field::LogBasedField<2, 4, {1, 1, 0, 0, 1}>;
   using GF2_5 = galois_field::LogBasedField<2, 5, {1, 0, 1, 0, 0, 1}>;
   using GF2_6 = galois_field::LogBasedField<2, 6, {1, 1, 0, 0, 0, 0, 1}>;
   using GF2_7 = galois_field::LogBasedField<2, 7, {1, 1, 0, 0, 0, 0, 0, 1}>;
   using GF2_8 = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
-  using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
-  using GF2_10 = galois_field::LogBasedField<2, 10, {1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1}>;
-  using GF2_16 = galois_field::LogBasedField<2, 16, { 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1 }>;
-
+  using GF2_9 =
+      galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
+  using GF2_10 =
+      galois_field::LogBasedField<2, 10, {1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1}>;
+  using GF2_16 = galois_field::LogBasedField<
+      2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
+  // NOLINTEND
 
   constexpr int kRuns = 10'000;
   constexpr int kTestValue = 1000;
-  constexpr int kThreads = 12; //20;
+  constexpr int kThreads = 12;  // 20;
   const std::string path{"../../experiments/experiment_3/exp_3_out.txt"};
 
   ExperimentParams params;
@@ -120,7 +126,7 @@ int main() {
     std::cout << "bad\n";
     return 0;
   }
-  std::ostream& out = out_file; //std::cout;
+  std::ostream& out = out_file;  // std::cout;
 
   out << "\t\t\t";
   for (size_t i = 0; i <= kTestValue; ++i) {

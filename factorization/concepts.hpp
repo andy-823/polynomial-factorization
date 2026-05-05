@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,14 +24,14 @@
 
 #include <concepts>
 #include <ranges>
+#include <utility>
 #include <vector>
 
 namespace factorization::concepts {
 
 template <typename Field>
-concept GaloisField = requires (const Field& field,
-                                typename Field::Value value,
-                                typename Field::Coefficient coef) {
+concept GaloisField = requires(const Field& field, typename Field::Value value,
+                               typename Field::Coefficient coef) {
   typename Field::Coefficient;
   requires std::integral<typename Field::Coefficient>;
   // return addition and multiplication neutral elements respectively
@@ -49,49 +49,69 @@ concept GaloisField = requires (const Field& field,
   { Field::FieldBase() } -> std::integral;
   { Field::FieldPower() } -> std::integral;
 
-  { field.Encode(std::array<typename Field::Coefficient, Field::FieldPower()>())}
-    -> std::same_as<typename Field::Value>;
-  { field.Encode(coef)} -> std::same_as<typename Field::Value>;
-  { field.Decode(value) }
-    -> std::same_as<std::array<typename Field::Coefficient, Field::FieldPower()>>;
+  {
+    field.Encode(std::array<typename Field::Coefficient, Field::FieldPower()>())
+  } -> std::same_as<typename Field::Value>;
+  { field.Encode(coef) } -> std::same_as<typename Field::Value>;
+  {
+    field.Decode(value)
+  }
+  -> std::same_as<std::array<typename Field::Coefficient, Field::FieldPower()>>;
 };
 
 template <typename Element>
-concept GaloisFieldElement = requires (Element element,
-                                       typename Element::Coefficient coeff) {
-  requires std::semiregular<Element>;
-  requires std::totally_ordered<Element>;
+concept GaloisFieldElement =
+    requires(Element element, typename Element::Coefficient coeff) {
+      requires std::semiregular<Element>;
+      requires std::totally_ordered<Element>;
 
-  requires std::constructible_from<std::array<typename Element::Coefficient, Element::FieldPower()>>;
-  requires std::constructible_from<typename Element::Coefficient>;
+      requires std::constructible_from<
+          std::array<typename Element::Coefficient, Element::FieldPower()>>;
+      requires std::constructible_from<typename Element::Coefficient>;
 
-  { Element::One() } -> std::same_as<Element>;
-  { Element::Zero() } -> std::same_as<Element>;
-  // get raw value of galois field element
-  { element.Get() }
-    -> std::same_as<std::array<typename Element::Coefficient, Element::FieldPower()>>;
+      { Element::One() } -> std::same_as<Element>;
+      { Element::Zero() } -> std::same_as<Element>;
+      // get raw value of galois field element
+      {
+        element.Get()
+      } -> std::same_as<
+          std::array<typename Element::Coefficient, Element::FieldPower()>>;
 
-  // arithmetic operations that can be performed
-  { element += element } -> std::same_as<Element&>;
-  { element -= element } -> std::same_as<Element&>;
-  { element *= element } -> std::same_as<Element&>;
-  { element /= element } -> std::same_as<Element&>;
+      // arithmetic operations that can be performed
+      { element += element } -> std::same_as<Element&>;
+      { element -= element } -> std::same_as<Element&>;
+      { element *= element } -> std::same_as<Element&>;
+      { element /= element } -> std::same_as<Element&>;
 
-  { element + element } -> std::same_as<Element>;
-  { element - element } -> std::same_as<Element>;
-  { element * element } -> std::same_as<Element>;
-  { element / element } -> std::same_as<Element>;
+      { element + element } -> std::same_as<Element>;
+      { element - element } -> std::same_as<Element>;
+      { element * element } -> std::same_as<Element>;
+      { element / element } -> std::same_as<Element>;
 
-  { -element } -> std::same_as<Element>;
-  // C++ doesn't have operator for getting inverse value or power
-  { element.Inverse() } -> std::same_as<Element>;
-  { element.Pow(0) } -> std::same_as<Element>;
+      { -element } -> std::same_as<Element>;
+      // C++ doesn't have operator for getting inverse value or power
+      { element.Inverse() } -> std::same_as<Element>;
+      { element.Pow(0) } -> std::same_as<Element>;
 
-  { Element::FieldBase() } -> std::integral;
-  { Element::FieldPower() } -> std::integral;
+      { Element::FieldBase() } -> std::integral;
+      { Element::FieldPower() } -> std::integral;
 
-  { Element::AllFieldElements() } -> std::ranges::range;
-};
+      { Element::AllFieldElements() } -> std::ranges::range;
+    };
+
+template <typename Engine, typename Elem>
+concept PolynomialEngine =
+    requires(std::vector<Elem> lhs, const std::vector<Elem>& rhs) {
+      { Engine::Mul(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
+      { Engine::Div(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
+      { Engine::Rem(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
+      {
+        Engine::DivRem(std::move(lhs), rhs)
+      } -> std::same_as<std::pair<std::vector<Elem>, std::vector<Elem>>>;
+      {
+        Engine::Gcd(std::vector<Elem>{}, std::vector<Elem>{})
+      } -> std::same_as<std::vector<Elem>>;
+    };
 
 template <typename Poly>
 concept Polynom = requires(const Poly& poly, typename Poly::Element value) {

@@ -7,7 +7,7 @@
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
-#include <factorization/polynomial/simple_polynomial.hpp>
+#include <factorization/polynomial/naive_polynomial.hpp>
 #include <factorization/solver/berlekamp.hpp>
 
 #include "generator.hpp"
@@ -18,7 +18,8 @@ using namespace factorization;  // NOLINT
 
 template <concepts::Polynom Poly>
 Poly BinPow(Poly base, int power) {
-  Poly result{1};
+  using Element = typename Poly::Element;
+  Poly result(Element(1));
   while (power > 0) {
     if (power % 2 != 0) {
       result = std::move(result).Mul(base);
@@ -35,28 +36,26 @@ TEST_CASE("Berlekamp") {
   SECTION("RandomPowers1") {
     using GaloisField = galois_field::LogBasedField<2, 1, {1, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     constexpr int kBudget = 100;
     constexpr int kTestCount = 1000;
 
     std::vector<Poly> polynoms = {
-      Poly({0, 1}),
-      Poly({1, 1 }),
-      Poly({1, 1, 1}),  // 1 + x + x^2
-      Poly({1, 0, 1, 1}),  // 1 + x^2 + x^3
-      Poly({1, 1, 0, 1}),  // 1 + x + x^3
-      Poly({1, 1, 0, 0, 1}),  // 1 + x + x^4
-      Poly({1, 0, 0, 1, 1}),  // 1 + x^3 + x^4
-      Poly({1, 1, 1, 1, 1})
-    };
+        Poly(std::vector<int>{0, 1}),          Poly(std::vector<int>{1, 1}),
+        Poly(std::vector<int>{1, 1, 1}),        // 1 + x + x^2
+        Poly(std::vector<int>{1, 0, 1, 1}),     // 1 + x^2 + x^3
+        Poly(std::vector<int>{1, 1, 0, 1}),     // 1 + x + x^3
+        Poly(std::vector<int>{1, 1, 0, 0, 1}),  // 1 + x + x^4
+        Poly(std::vector<int>{1, 0, 0, 1, 1}),  // 1 + x^3 + x^4
+        Poly(std::vector<int>{1, 1, 1, 1, 1})};
 
     solver::Berlekamp<Poly> solver;
 
     for (int test = 0; test < kTestCount; ++test) {
       std::map<Poly, int> expected;
       int budget = kBudget;
-      Poly factorizing(Element::One());
+      Poly factorizing{Element::One()};
 
       static_assert(utils::BinPow(2, 6) == 64);
       for (const auto& poly : polynoms) {
@@ -79,20 +78,20 @@ TEST_CASE("Berlekamp") {
   SECTION("RandomPowers2") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     constexpr int kBudget = 100;
     constexpr int kTestCount = 1000;
 
     std::vector<Poly> polynoms = {
-      Poly({Element({0, 0, 0}), 1}),
-      Poly({Element({1, 0, 0}), 1}),
-      Poly({Element({0, 1, 0}), 1}),
-      Poly({Element({1, 1, 0}), 1}),
-      Poly({Element({0, 0, 1}), 1}),
-      Poly({Element({1, 0, 1}), 1}),
-      Poly({Element({0, 1, 1}), 1}),
-      Poly({Element({1, 1, 1}), 1}),
+        Poly(std::vector<Element>{Element({0, 0, 0}), Element(1)}),
+        Poly(std::vector<Element>{Element({1, 0, 0}), Element(1)}),
+        Poly(std::vector<Element>{Element({0, 1, 0}), Element(1)}),
+        Poly(std::vector<Element>{Element({1, 1, 0}), Element(1)}),
+        Poly(std::vector<Element>{Element({0, 0, 1}), Element(1)}),
+        Poly(std::vector<Element>{Element({1, 0, 1}), Element(1)}),
+        Poly(std::vector<Element>{Element({0, 1, 1}), Element(1)}),
+        Poly(std::vector<Element>{Element({1, 1, 1}), Element(1)}),
     };
 
     solver::Berlekamp<Poly> solver;
@@ -100,11 +99,12 @@ TEST_CASE("Berlekamp") {
     for (int test = 0; test < kTestCount; ++test) {
       std::map<Poly, int> expected;
       int budget = kBudget;
-      Poly factorizing(Element::One());
+      Poly factorizing{Element::One()};
 
       static_assert(utils::BinPow(2, 6) == 64);
       for (const auto& poly : polynoms) {
-        int power = std::min(uint64_t{10}, uint64_t(random_gen() % (budget + 1)));
+        int power =
+            std::min(uint64_t{10}, uint64_t(random_gen() % (budget + 1)));
         budget -= power;
         if (power != 0) {
           expected[poly] = power;
@@ -122,11 +122,12 @@ TEST_CASE("Berlekamp") {
   }
 
   SECTION("Stress") {
-    using GaloisField = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
+    using GaloisField =
+        galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
     // using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     // using GaloisField = galois_field::LogBasedField<3, 2, {2, 2, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     constexpr int kTestsCount = 1000;
 
@@ -139,7 +140,8 @@ TEST_CASE("Berlekamp") {
 
       for (const auto& factor : solver.Factorize(poly)) {
         auto got = solver.Factorize(factor.factor);
-        std::vector<solver::Factor<Poly>> expected(1, solver::Factor<Poly>(factor.factor, 1));
+        std::vector<solver::Factor<Poly>> expected(
+            1, solver::Factor<Poly>(factor.factor, 1));
 
         REQUIRE(got == expected);
 

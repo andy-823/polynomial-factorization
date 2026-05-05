@@ -5,11 +5,21 @@
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
-#include <factorization/polynomial/simple_polynomial.hpp>
+#include <factorization/polynomial/naive_polynomial.hpp>
 
 #include "generator.hpp"
 
 using namespace factorization;  // NOLINT
+
+template <concepts::Polynom Poly, concepts::GaloisFieldElement Elem>
+Poly MakePoly(std::vector<int> data) {
+  std::vector<Elem> result;
+  result.reserve(data.size());
+  for (const auto& v : data) {
+    result.emplace_back(Elem(v));
+  }
+  return Poly(std::move(result));
+}
 
 TEST_CASE("SimplePolynomial") {
   std::mt19937 random_gen;
@@ -17,10 +27,10 @@ TEST_CASE("SimplePolynomial") {
   SECTION("Add sanity check") {
     using GaloisField = galois_field::LogBasedField<2, 1, {1, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     {
-      Poly first({1, 0, 1, 0, 1, 1});
+      Poly first = MakePoly<Poly, Element>({1, 0, 1, 0, 0, 1, 1});
       Poly second = first;
 
       REQUIRE(first.Add(second).IsZero());
@@ -28,17 +38,17 @@ TEST_CASE("SimplePolynomial") {
     }
 
     {
-      Poly first({1, 0, 1, 0, 1, 1});
-      Poly expected({0, 0, 1, 0, 1, 1});
+      Poly first(MakePoly<Poly, Element>({1, 0, 1, 0, 1, 1}));
+      Poly expected(MakePoly<Poly, Element>({0, 0, 1, 0, 1, 1}));
 
       REQUIRE(first.Add(Element(1)) == expected);
       REQUIRE(first.Add(Element(1)) == expected);
     }
 
     {
-      Poly first({1, 0, 1, 0, 1, 1});
-      Poly second({1, 0, 1, 0, 0, 1});
-      Poly expected({0, 0, 0, 0, 1});
+      Poly first(MakePoly<Poly, Element>({1, 0, 1, 0, 1, 1}));
+      Poly second(MakePoly<Poly, Element>({1, 0, 1, 0, 0, 1}));
+      Poly expected(MakePoly<Poly, Element>({0, 0, 0, 0, 1}));
 
       REQUIRE(first.Add(second) == expected);
     }
@@ -47,16 +57,16 @@ TEST_CASE("SimplePolynomial") {
   SECTION("Multiply sanity check") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     {
-      Poly poly({1, 0, 1, 0, 1, 1});
+      Poly poly(MakePoly<Poly, Element>({1, 0, 1, 0, 1, 1}));
 
-      REQUIRE(poly.Div(poly) == Poly{1});
+      REQUIRE(poly.Div(poly) == MakePoly<Poly, Element>({1}));
       REQUIRE(poly.Div(poly).IsOne());
 
-      REQUIRE(poly.Rem(Poly{1}).IsZero());
-      REQUIRE(poly.Mul(Poly{0}).IsZero());
+      REQUIRE(poly.Rem(MakePoly<Poly, Element>({1})).IsZero());
+      REQUIRE(poly.Mul(MakePoly<Poly, Element>({0})).IsZero());
     }
 
     {
@@ -71,12 +81,12 @@ TEST_CASE("SimplePolynomial") {
   SECTION("Other methods sanity check") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     {
-      Poly poly({1, 0, 1, 0, 1, 1});
+      Poly poly(MakePoly<Poly, Element>({1, 0, 1, 0, 1, 1}));
 
-      REQUIRE(poly.Derivative() == Poly({0, 0, 0, 0, 1}));
+      REQUIRE(poly.Derivative() == MakePoly<Poly, Element>({0, 0, 0, 0, 1}));
     }
 
     {
@@ -87,31 +97,30 @@ TEST_CASE("SimplePolynomial") {
 
     {
       using Vec = std::vector<Element>;
-      Poly first({Element({1, 0, 0}), Element({0, 1, 0}),
-                  Element({1, 1, 0}), Element({0, 0, 1}),
-                  Element({1, 0, 1}), Element({0, 1, 1}),
-                  Element({1, 1, 1})});
-      Poly second({Element({0, 0, 0}), Element({1, 0, 0}),
-                   Element({0, 1, 0}), Element({1, 1, 0}),
-                   Element({0, 0, 1}), Element({1, 0, 1}),
-                   Element({0, 1, 1})});
-
-      REQUIRE(second < first );
-
-      first = Poly({Element({1, 0, 0}), Element({0, 1, 0}),
-                       Element({1, 1, 0}), Element({0, 0, 1}),
-                       Element({1, 0, 1}), Element({0, 1, 1}),
-                       Element({1, 1, 1})});
-      second = Poly({Element({1, 0, 0}), Element({1, 0, 0}),
-                     Element({1, 1, 0}), Element({1, 1, 0}),
-                     Element({0, 0, 1}), Element({0, 1, 1}),
+      Poly first(Vec{Element({1, 0, 0}), Element({0, 1, 0}), Element({1, 1, 0}),
+                     Element({0, 0, 1}), Element({1, 0, 1}), Element({0, 1, 1}),
                      Element({1, 1, 1})});
+      Poly second(Vec{Element({0, 0, 0}), Element({1, 0, 0}),
+                      Element({0, 1, 0}), Element({1, 1, 0}),
+                      Element({0, 0, 1}), Element({1, 0, 1}),
+                      Element({0, 1, 1})});
 
-      REQUIRE(second < first );
+      REQUIRE(second < first);
 
-      first = Poly({Element({1, 0, 0}), Element({0, 1, 0}),
-                    Element({0, 1, 1})});
-      second = Poly({Element({1, 0, 0}), Element({0, 1, 0})});
+      first =
+          Poly(Vec{Element({1, 0, 0}), Element({0, 1, 0}), Element({1, 1, 0}),
+                   Element({0, 0, 1}), Element({1, 0, 1}), Element({0, 1, 1}),
+                   Element({1, 1, 1})});
+      second =
+          Poly(Vec{Element({1, 0, 0}), Element({1, 0, 0}), Element({1, 1, 0}),
+                   Element({1, 1, 0}), Element({0, 0, 1}), Element({0, 1, 1}),
+                   Element({1, 1, 1})});
+
+      REQUIRE(second < first);
+
+      first =
+          Poly(Vec{Element({1, 0, 0}), Element({0, 1, 0}), Element({0, 1, 1})});
+      second = Poly(Vec{Element({1, 0, 0}), Element({0, 1, 0})});
 
       REQUIRE(second < first);
     }
@@ -120,7 +129,7 @@ TEST_CASE("SimplePolynomial") {
   SECTION("Stress") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Poly = polynomial::SimplePolynomial<Element>;
+    using Poly = polynomial::NaivePolynomial<Element>;
 
     constexpr int kTestsCount = 10000;
 

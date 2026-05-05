@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -55,12 +55,13 @@ class CountingFieldElement {
   constexpr CountingFieldElement() = default;
 
   template <std::convertible_to<Coefficient> T = Coefficient>
-  constexpr CountingFieldElement(T value)
+  explicit constexpr CountingFieldElement(T value)
       : value_(kField.Encode(value)) {
   }
 
   template <std::convertible_to<Coefficient> T = Coefficient>
-  constexpr CountingFieldElement(const std::array<T, kFieldPower>& value) 
+  explicit constexpr CountingFieldElement(
+      const std::array<T, kFieldPower>& value)
       : value_(kField.Encode(Convert(value))) {
   }
 
@@ -71,10 +72,11 @@ class CountingFieldElement {
   constexpr CountingFieldElement(const CountingFieldElement&) = default;
   constexpr CountingFieldElement(CountingFieldElement&&) = default;
 
-  constexpr CountingFieldElement& operator=(const CountingFieldElement&) = default;
+  constexpr CountingFieldElement& operator=(const CountingFieldElement&) =
+      default;
   constexpr CountingFieldElement& operator=(CountingFieldElement&&) = default;
 
- ~CountingFieldElement() = default;
+  ~CountingFieldElement() = default;
 
   constexpr auto operator<=>(const CountingFieldElement&) const = default;
 
@@ -165,8 +167,8 @@ class CountingFieldElement {
 
  private:
   template <std::convertible_to<Coefficient> T>
-  constexpr std::array<Coefficient, kFieldPower>
-  Convert(const std::array<T, kFieldPower>& value) {
+  constexpr std::array<Coefficient, kFieldPower> Convert(
+      const std::array<T, kFieldPower>& value) {
     std::array<Coefficient, kFieldPower> result;
     for (size_t i = 0; i < kFieldPower; ++i) {
       result[i] = value[i];

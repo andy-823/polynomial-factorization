@@ -9,7 +9,7 @@
 
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
-#include <factorization/polynomial/simple_polynomial.hpp>
+#include <factorization/polynomial/naive_polynomial.hpp>
 #include <factorization/parallel/thread_pool.hpp>
 #include <factorization/parallel/wait_group.hpp>
 #include <factorization/concepts.hpp>
@@ -32,9 +32,9 @@ struct ExperimentParams {
 template <typename RandomGen>
 class MultithreadRandomGen {
  public:
-  using result_type = typename RandomGen::result_type;
+  using result_type = typename RandomGen::result_type;  // NOLINT
 
-  void seed(result_type seed) {
+  void seed(result_type seed) {  // NOLINT
     lock_.lock();
     gen_.seed(seed);
     lock_.unlock();
@@ -53,26 +53,28 @@ class MultithreadRandomGen {
 };
 
 template <concepts::GaloisField Field, typename RandomGen>
-void RunDivisionsExperiment(std::ostream& out, const ExperimentParams& params, RandomGen& gen) {
+void RunDivisionsExperiment(std::ostream& out, const ExperimentParams& params,
+                            RandomGen& gen) {
   using Element = galois_field::CountingFieldElement<Field>;
-  using Poly = polynomial::SimplePolynomial<Element>;
+  using Poly = polynomial::NaivePolynomial<Element>;
 
-  constexpr int kFieldSize = utils::BinPow(Field::FieldBase(), Field::FieldPower());
+  constexpr int kFieldSize =
+      utils::BinPow(Field::FieldBase(), Field::FieldPower());
 
   parallel::ThreadPool runtime(params.thread_count);
   parallel::WaitGroup wg;
   runtime.Start();
 
   out << kFieldSize << "\t";
-  for (size_t size = params.min_value; size <= params.max_value; size += params.step) {
+  for (size_t size = params.min_value; size <= params.max_value;
+       size += params.step) {
     std::atomic<uint64_t> actions_simple{0};
     std::atomic<uint64_t> actions_better{0};
     std::atomic<uint64_t> gauss{0};
 
-
     wg.Add(params.test_runs);
     for (size_t test = 0; test < params.test_runs; ++test) {
-      parallel::SubmitTask(&runtime, [&]{    
+      parallel::SubmitTask(&runtime, [&] {
         solver::BerlekampExperiment<Poly, false> solver_simple;
         solver::BerlekampExperiment<Poly, true> solver_better;
 
@@ -105,25 +107,28 @@ void RunDivisionsExperiment(std::ostream& out, const ExperimentParams& params, R
 }
 
 template <concepts::GaloisField Field, typename RandomGen>
-void RunGaussExperiment(std::ostream& out, const ExperimentParams& params, RandomGen& gen) {
+void RunGaussExperiment(std::ostream& out, const ExperimentParams& params,
+                        RandomGen& gen) {
   using Element = galois_field::CountingFieldElement<Field>;
-  using Poly = polynomial::SimplePolynomial<Element>;
+  using Poly = polynomial::NaivePolynomial<Element>;
 
-  constexpr int kFieldSize = utils::BinPow(Field::FieldBase(), Field::FieldPower());
+  constexpr int kFieldSize =
+      utils::BinPow(Field::FieldBase(), Field::FieldPower());
 
   parallel::ThreadPool runtime(params.thread_count);
   parallel::WaitGroup wg;
   runtime.Start();
 
   out << kFieldSize << "\t";
-  for (size_t size = params.min_value; size <= params.max_value; size += params.step) {
+  for (size_t size = params.min_value; size <= params.max_value;
+       size += params.step) {
     std::atomic<uint64_t> divisions{0};
     std::atomic<uint64_t> gauss{0};
     std::atomic<uint64_t> total{0};
 
     wg.Add(params.test_runs);
     for (size_t test = 0; test < params.test_runs; ++test) {
-      parallel::SubmitTask(&runtime, [&]{    
+      parallel::SubmitTask(&runtime, [&] {
         solver::BerlekampExperiment<Poly> solver;
 
         RandomGen local_gen;
@@ -158,22 +163,23 @@ void RunGaussExperiment(std::ostream& out, const ExperimentParams& params, Rando
 
 int main() {
   // https://www.partow.net/programming/polynomials/index.html
+  // NOLINTBEGIN
   using GF2_1 = galois_field::LogBasedField<2, 1, {1, 1}>;
   using GF2_2 = galois_field::LogBasedField<2, 2, {1, 1, 1}>;
-  using GF2_3 = galois_field::LogBasedField<2, 3, {1, 1, 0 , 1}>;
+  using GF2_3 = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
   using GF2_4 = galois_field::LogBasedField<2, 4, {1, 1, 0, 0, 1}>;
   using GF2_5 = galois_field::LogBasedField<2, 5, {1, 0, 1, 0, 0, 1}>;
   using GF2_6 = galois_field::LogBasedField<2, 6, {1, 1, 0, 0, 0, 0, 1}>;
   using GF2_7 = galois_field::LogBasedField<2, 7, {1, 1, 0, 0, 0, 0, 0, 1}>;
   using GF2_8 = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
   using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
+  // NOLINTEND
 
-
-  constexpr int kRuns = 10'000;
+  constexpr int kRuns = 100;
   constexpr int kMin = 25;
-  constexpr int kMax = 400; //500;
+  constexpr int kMax = 400;  // 500;
   constexpr int kStep = 25;
-  constexpr int kThreads = 12; //20;
+  constexpr int kThreads = 8;  // 20;
   const std::string path{"../../experiments/experiment_1/exp_1_out.txt"};
 
   ExperimentParams params;
@@ -189,7 +195,7 @@ int main() {
     std::cout << "bad\n";
     return 0;
   }
-  std::ostream& out = out_file; //std::cout;
+  std::ostream& out = out_file;  // std::cout;
 
   out << "\t";
   for (size_t i = kMin; i <= kMax; i += kStep) {
