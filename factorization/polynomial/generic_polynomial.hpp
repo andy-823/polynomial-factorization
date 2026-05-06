@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -36,25 +37,232 @@ struct PolynomialEngine {
   [[nodiscard]]
   static std::vector<Elem> Mul(std::vector<Elem> a,
                                const std::vector<Elem>& b) {
+    if (a.empty() || b.empty()) {
+      return {};
+    }
+    if (a.size() < b.size()) {
+      return MulImpl(b, a);
+    }
+    return MulImpl(a, b);
   }
 
+  // assume a.size() >= b.size()
   [[nodiscard]]
   static std::vector<Elem> Rem(std::vector<Elem> a,
                                const std::vector<Elem>& b) {
+    auto quotient = Div(a, b);
+    return Sub(std::move(a), Mul(std::move(quotient), b), b.size() - 1);
   }
 
+  // assume a.size() >= b.size()
   [[nodiscard]]
   static std::vector<Elem> Div(std::vector<Elem> a,
                                const std::vector<Elem>& b) {
+    const size_t quotient_size = a.size() - b.size() + 1;
+    std::vector<Elem> rev_a = ReverseTake(a, quotient_size);
+    std::vector<Elem> rev_b = ReverseTake(b, quotient_size);
+    auto inv = InverseMod(rev_b, quotient_size);
+    auto quotient = Mul(std::move(rev_a), inv);
+    quotient.resize(quotient_size);
+    std::reverse(quotient.begin(), quotient.end());
+    return quotient;
   }
 
   [[nodiscard]]
   static std::pair<std::vector<Elem>, std::vector<Elem>> DivRem(
       std::vector<Elem> a, const std::vector<Elem>& b) {
+    if (a.size() < b.size()) {
+      return {{}, Trim(std::move(a))};
+    }
+    auto quotient = Div(a, b);
+    auto remainder = Sub(std::move(a), Mul(quotient, b), b.size() - 1);
+    return {std::move(quotient), std::move(remainder)};
   }
 
   [[nodiscard]]
   static std::vector<Elem> Gcd(std::vector<Elem> a, std::vector<Elem> b) {
+    return EuclidGcd(std::move(a), std::move(b));
+  }
+
+ private:
+  constexpr static size_t kKaratsubaThreshold = 128;
+
+  static void TrimInPlace(std::vector<Elem>& a) {
+    while (!a.empty() && a.back() == Elem::Zero()) {
+      a.pop_back();
+    }
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> Trim(std::vector<Elem> a) {
+    TrimInPlace(a);
+    return a;
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> Add(std::vector<Elem> a,
+                               const std::vector<Elem>& b) {
+    if (a.size() < b.size()) {
+      a.resize(b.size(), Elem::Zero());
+    }
+    for (size_t i = 0; i < b.size(); ++i) {
+      a[i] += b[i];
+    }
+    return Trim(std::move(a));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> Sub(std::vector<Elem> a, const std::vector<Elem>& b,
+                               size_t max_size = 0) {
+    const size_t result_size = std::max(a.size(), b.size());
+    if (a.size() < result_size) {
+      a.resize(result_size, Elem::Zero());
+    }
+    for (size_t i = 0; i < b.size(); ++i) {
+      a[i] -= b[i];
+    }
+    if (max_size != 0 && a.size() > max_size) {
+      a.resize(max_size);
+    }
+    return Trim(std::move(a));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> ReverseTake(const std::vector<Elem>& a,
+                                       size_t size) {
+    std::vector<Elem> result;
+    const size_t result_size = std::min(a.size(), size);
+    result.reserve(result_size);
+    for (size_t i = 0; i < result_size; ++i) {
+      result.push_back(a[a.size() - 1 - i]);
+    }
+    return Trim(std::move(result));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> MulNaive(const std::vector<Elem>& a,
+                                    const std::vector<Elem>& b) {
+    std::vector<Elem> result(a.size() + b.size() - 1, Elem::Zero());
+    for (size_t i = 0; i < a.size(); ++i) {
+      if (a[i] == Elem::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (size_t j = 0; j < b.size(); ++j) {
+        result[i + j] += a[i] * b[j];
+      }
+    }
+    return Trim(std::move(result));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> MulImpl(const std::vector<Elem>& a,
+                                   const std::vector<Elem>& b) {
+    if (a.empty() || b.empty()) {
+      return {};
+    }
+    if (b.size() == 1) {
+      if (b[0] == Elem::Zero()) {
+        return {};
+      }
+      std::vector<Elem> result(a);
+      if (b[0] != Elem::One()) {
+        for (auto& value : result) {
+          value *= b[0];
+        }
+      }
+      return Trim(std::move(result));
+    }
+    if (std::min(a.size(), b.size()) <= kKaratsubaThreshold) {
+      return MulNaive(a, b);
+    }
+
+    const size_t split = std::min(a.size(), b.size()) / 2;
+    std::vector<Elem> a_low(a.begin(), a.begin() + split);
+    std::vector<Elem> a_high(a.begin() + split, a.end());
+    std::vector<Elem> b_low(b.begin(), b.begin() + split);
+    std::vector<Elem> b_high(b.begin() + split, b.end());
+
+    // (A1 + A2x)(B1 + B2x) =
+    //   A1B1 + ((A1 + A2)(B1 + B2) - A1B1 - A2B2)x + A2B2x^2
+    auto low = MulImpl(a_low, b_low);
+    auto high = MulImpl(a_high, b_high);
+    auto middle = Sub(Sub(MulImpl(Add(std::move(a_low), a_high),
+                                  Add(std::move(b_low), b_high)),
+                          low),
+                      high);
+
+    std::vector<Elem> result(a.size() + b.size() - 1, Elem::Zero());
+    AddShifted(result, low, 0);
+    AddShifted(result, middle, split);
+    AddShifted(result, high, 2 * split);
+    return Trim(std::move(result));
+  }
+
+  static void AddShifted(std::vector<Elem>& target,
+                         const std::vector<Elem>& value, size_t shift) {
+    if (value.empty()) {
+      return;
+    }
+    if (target.size() < value.size() + shift) {
+      target.resize(value.size() + shift, Elem::Zero());
+    }
+    for (size_t i = 0; i < value.size(); ++i) {
+      target[i + shift] += value[i];
+    }
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> MulTrunc(std::vector<Elem> a,
+                                    const std::vector<Elem>& b, size_t size) {
+    auto result = Mul(std::move(a), b);
+    if (result.size() > size) {
+      result.resize(size);
+    }
+    return result;
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> InverseMod(const std::vector<Elem>& a, size_t size) {
+    if (size == 1) {
+      return {a[0].Inverse()};
+    }
+
+    const size_t k = (size + 1) / 2;
+    std::vector<Elem> a1(a.begin(), a.begin() + std::min(a.size(), k));
+    auto b1 = InverseMod(a1, k);
+
+    auto product = MulTrunc(a, b1, size);
+    std::vector<Elem> c(size - k, Elem::Zero());
+    if (product.size() > k) {
+      const size_t c_size = std::min(product.size() - k, c.size());
+      std::copy(product.begin() + k, product.begin() + k + c_size, c.begin());
+      TrimInPlace(c);
+    }
+
+    auto b2 = MulTrunc(b1, c, size - k);
+    for (auto& value : b2) {
+      value = -value;
+    }
+
+    std::vector<Elem> g(std::move(b1));
+    g.resize(k, Elem::Zero());
+    g.insert(g.end(), b2.begin(), b2.end());
+    if (g.size() > size) {
+      g.resize(size);
+    }
+    return Trim(std::move(g));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> EuclidGcd(std::vector<Elem> a, std::vector<Elem> b) {
+    if (a.size() < b.size()) {
+      a.swap(b);
+    }
+    while (!b.empty()) {
+      a = Rem(std::move(a), b);
+      a.swap(b);
+    }
+    return a;
   }
 };
 
@@ -154,21 +362,20 @@ class GenericPolynomial
   [[nodiscard]]
   GenericPolynomial Gcd(GenericPolynomial b) && {
     auto gcd = Engine::Gcd(std::move(data_), std::move(b.data_));
-    return GenericPolynomial(std::move(gcd)).MakeMonic();
+    return GenericPolynomial(std::move(gcd));
   }
 
  protected:
   using Base::data_;
   using Base::DivInPlace;
   using Base::MulInPlace;
-  using Base::RemoveLeadingZeros;
 
   GenericPolynomial& MulInPlace(const GenericPolynomial& rhs) {
     if (rhs.data_.size() == 1) {
       return Base::MulInPlace(rhs.data_[0]);
     }
     data_ = Engine::Mul(std::move(data_), rhs.data_);
-    return RemoveLeadingZeros();
+    return *this;
   }
 
   GenericPolynomial& DivInPlace(const GenericPolynomial& rhs) {
@@ -183,7 +390,7 @@ class GenericPolynomial
       return Base::DivInPlace(rhs.data_[0]);
     }
     data_ = Engine::Div(std::move(data_), rhs.data_);
-    return RemoveLeadingZeros();
+    return *this;
   }
 
   GenericPolynomial& RemInPlace(const GenericPolynomial& rhs) {
@@ -198,7 +405,7 @@ class GenericPolynomial
       return *this;
     }
     data_ = Engine::Rem(std::move(data_), rhs.data_);
-    return RemoveLeadingZeros();
+    return *this;
   }
 
   [[nodiscard]]
@@ -208,12 +415,10 @@ class GenericPolynomial
     const size_t m = rhs.data_.size();
 
     if (n < m) {
-      RemoveLeadingZeros();
       return {GenericPolynomial(), std::move(*this)};
     }
     if (m == 1) {
       Base::DivInPlace(rhs.data_[0]);
-      RemoveLeadingZeros();
       return {std::move(*this), GenericPolynomial()};
     }
 
