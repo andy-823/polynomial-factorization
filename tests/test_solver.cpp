@@ -42,7 +42,8 @@ TEST_CASE("Berlekamp") {
     constexpr int kTestCount = 1000;
 
     std::vector<Poly> polynoms = {
-        Poly(std::vector<int>{0, 1}),          Poly(std::vector<int>{1, 1}),
+        Poly(std::vector<int>{0, 1}),
+        Poly(std::vector<int>{1, 1}),
         Poly(std::vector<int>{1, 1, 1}),        // 1 + x + x^2
         Poly(std::vector<int>{1, 0, 1, 1}),     // 1 + x^2 + x^3
         Poly(std::vector<int>{1, 1, 0, 1}),     // 1 + x + x^3

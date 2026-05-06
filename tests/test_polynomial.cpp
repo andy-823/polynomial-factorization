@@ -25,7 +25,6 @@ Poly MakePoly(std::vector<int> data) {
   return Poly(std::move(result));
 }
 
-
 template <concepts::Polynom Reference, concepts::Polynom Verify,
           size_t kMaxSize, typename RandomGen>
 void RunCompareTest(RandomGen& random_gen) {
@@ -39,10 +38,18 @@ void RunCompareTest(RandomGen& random_gen) {
   REQUIRE(generic_first.Div(generic_second).Get() == first.Div(second).Get());
   REQUIRE(generic_first.Rem(generic_second).Get() == first.Rem(second).Get());
 
+  const auto second_modulus = generic_second.BuildModulus(generic_first.Size());
+  REQUIRE(generic_first.Div(second_modulus).Get() == first.Div(second).Get());
+  REQUIRE(generic_first.Rem(second_modulus).Get() == first.Rem(second).Get());
+
   const auto [generic_div, generic_rem] = generic_first.DivRem(generic_second);
   const auto [naive_div, naive_rem] = first.DivRem(second);
   REQUIRE(generic_div.Get() == naive_div.Get());
   REQUIRE(generic_rem.Get() == naive_rem.Get());
+
+  const auto [modulus_div, modulus_rem] = generic_first.DivRem(second_modulus);
+  REQUIRE(modulus_div.Get() == naive_div.Get());
+  REQUIRE(modulus_rem.Get() == naive_rem.Get());
   REQUIRE(generic_first.Gcd(generic_second).MakeMonic().Get() ==
           first.Gcd(second).Get());
 }
@@ -237,8 +244,8 @@ TEST_CASE("GenericPolynomial") {
       return std::chrono::duration_cast<Duration>(time).count();
     };
 
-    auto first_naive = GenPoly<NaivePoly, 100'000>(random_gen);
-    auto second_naive = GenPoly<NaivePoly, 100'000>(random_gen);
+    auto first_naive = GenPoly<NaivePoly, 100'000, kFixed>(random_gen);
+    auto second_naive = GenPoly<NaivePoly, 100'000, kFixed>(random_gen);
 
     GenericPoly first_generic(first_naive.Get());
     GenericPoly second_generic(second_naive.Get());
@@ -247,8 +254,10 @@ TEST_CASE("GenericPolynomial") {
     auto res_naive = first_naive.Mul(second_naive);
     auto end_naive = Timer::now();
 
-    auto start_generic = Timer::now();
     auto res_generic = first_generic.Mul(second_generic);
+    auto modulus = first_generic.BuildModulus(res_generic.Size());
+    auto start_generic = Timer::now();
+    REQUIRE(res_generic.Rem(modulus).IsZero());
     auto end_generic = Timer::now();
 
     std::cout << "Naive: " << get_duration_count(end_naive - start_naive)

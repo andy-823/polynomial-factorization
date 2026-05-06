@@ -44,6 +44,7 @@ class NaivePolynomial : public PolynomialBase<Elem, NaivePolynomial<Elem>> {
   using Element = Base::Element;
   using Base::Div;
   using Base::Mul;
+  using Modulus = NaivePolynomial;
 
  public:
   [[nodiscard]]
@@ -134,6 +135,14 @@ class NaivePolynomial : public PolynomialBase<Elem, NaivePolynomial<Elem>> {
       data_.swap(b.data_);
     }
     return std::move(*this).MakeMonic();
+  }
+
+  Modulus BuildModulus(size_t) const& {
+    return *this;
+  }
+
+  Modulus BuildModulus(size_t) && {
+    return std::move(*this);
   }
 
  protected:

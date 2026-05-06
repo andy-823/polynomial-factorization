@@ -34,6 +34,12 @@ namespace factorization::polynomial {
 
 template <concepts::GaloisFieldElement Elem>
 struct PolynomialEngine {
+  struct Modulus {
+    std::vector<Elem> polynomial;
+    std::vector<Elem> reversed_inverse;
+    size_t max_quotient_size = 0;
+  };
+
   [[nodiscard]]
   static std::vector<Elem> Mul(std::vector<Elem> a,
                                const std::vector<Elem>& b) {
@@ -41,9 +47,9 @@ struct PolynomialEngine {
       return {};
     }
     if (a.size() < b.size()) {
-      return MulImpl(b, a);
+      return MulKaratsuba(b, a);
     }
-    return MulImpl(a, b);
+    return MulKaratsuba(a, b);
   }
 
   // assume a.size() >= b.size()
@@ -52,6 +58,16 @@ struct PolynomialEngine {
                                const std::vector<Elem>& b) {
     auto quotient = Div(a, b);
     return Sub(std::move(a), Mul(std::move(quotient), b), b.size() - 1);
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> Rem(std::vector<Elem> a, const Modulus& modulus) {
+    if (a.size() < modulus.polynomial.size()) {
+      return Trim(std::move(a));
+    }
+    auto quotient = Div(a, modulus);
+    return Sub(std::move(a), Mul(std::move(quotient), modulus.polynomial),
+               modulus.polynomial.size() - 1);
   }
 
   // assume a.size() >= b.size()
@@ -69,6 +85,27 @@ struct PolynomialEngine {
   }
 
   [[nodiscard]]
+  static std::vector<Elem> Div(std::vector<Elem> a, const Modulus& modulus) {
+    if (a.size() < modulus.polynomial.size()) {
+      return {};
+    }
+    const size_t quotient_size = a.size() - modulus.polynomial.size() + 1;
+    if (quotient_size > modulus.max_quotient_size) {
+      return Div(std::move(a), modulus.polynomial);
+    }
+
+    std::vector<Elem> rev_a = ReverseTake(a, quotient_size);
+    std::vector<Elem> inv(
+        modulus.reversed_inverse.begin(),
+        modulus.reversed_inverse.begin() +
+            std::min(modulus.reversed_inverse.size(), quotient_size));
+    auto quotient = Mul(std::move(rev_a), inv);
+    quotient.resize(quotient_size);
+    std::reverse(quotient.begin(), quotient.end());
+    return quotient;
+  }
+
+  [[nodiscard]]
   static std::pair<std::vector<Elem>, std::vector<Elem>> DivRem(
       std::vector<Elem> a, const std::vector<Elem>& b) {
     if (a.size() < b.size()) {
@@ -77,6 +114,33 @@ struct PolynomialEngine {
     auto quotient = Div(a, b);
     auto remainder = Sub(std::move(a), Mul(quotient, b), b.size() - 1);
     return {std::move(quotient), std::move(remainder)};
+  }
+
+  [[nodiscard]]
+  static std::pair<std::vector<Elem>, std::vector<Elem>> DivRem(
+      std::vector<Elem> a, const Modulus& modulus) {
+    if (a.size() < modulus.polynomial.size()) {
+      return {{}, Trim(std::move(a))};
+    }
+    auto quotient = Div(a, modulus);
+    auto remainder = Sub(std::move(a), Mul(quotient, modulus.polynomial),
+                         modulus.polynomial.size() - 1);
+    return {std::move(quotient), std::move(remainder)};
+  }
+
+  [[nodiscard]]
+  static Modulus BuildModulus(const std::vector<Elem>& polynomial,
+                              size_t max_dividend_size) {
+    if (max_dividend_size < polynomial.size()) {
+      return {polynomial, {}, 0};
+    }
+    const size_t quotient_size = max_dividend_size - polynomial.size() + 1;
+    std::vector<Elem> rev_polynomial = ReverseTake(polynomial, quotient_size);
+    return {
+        polynomial,
+        InverseMod(rev_polynomial, quotient_size),
+        quotient_size,
+    };
   }
 
   [[nodiscard]]
@@ -155,8 +219,8 @@ struct PolynomialEngine {
   }
 
   [[nodiscard]]
-  static std::vector<Elem> MulImpl(const std::vector<Elem>& a,
-                                   const std::vector<Elem>& b) {
+  static std::vector<Elem> MulKaratsuba(const std::vector<Elem>& a,
+                                        const std::vector<Elem>& b) {
     if (a.empty() || b.empty()) {
       return {};
     }
@@ -184,10 +248,10 @@ struct PolynomialEngine {
 
     // (A1 + A2x)(B1 + B2x) =
     //   A1B1 + ((A1 + A2)(B1 + B2) - A1B1 - A2B2)x + A2B2x^2
-    auto low = MulImpl(a_low, b_low);
-    auto high = MulImpl(a_high, b_high);
-    auto middle = Sub(Sub(MulImpl(Add(std::move(a_low), a_high),
-                                  Add(std::move(b_low), b_high)),
+    auto low = MulKaratsuba(a_low, b_low);
+    auto high = MulKaratsuba(a_high, b_high);
+    auto middle = Sub(Sub(MulKaratsuba(Add(std::move(a_low), a_high),
+                                       Add(std::move(b_low), b_high)),
                           low),
                       high);
 
@@ -278,6 +342,20 @@ class GenericPolynomial
   friend Base;
 
  public:
+  class Modulus {
+    friend GenericPolynomial;
+
+   public:
+    Modulus() = default;
+
+   private:
+    explicit Modulus(typename Engine::Modulus data)
+        : data_(std::move(data)) {
+    }
+
+    typename Engine::Modulus data_;
+  };
+
   using Base::Base;
   using Base::Div;
   using Base::Mul;
@@ -320,6 +398,23 @@ class GenericPolynomial
   }
 
   [[nodiscard]]
+  GenericPolynomial Div(const Modulus& modulus) const& {
+    if (data_.empty()) {
+      return GenericPolynomial();
+    }
+    return GenericPolynomial(*this).DivInPlace(modulus);
+  }
+
+  [[nodiscard]]
+  GenericPolynomial Div(const Modulus& modulus) && {
+    if (data_.empty()) {
+      return std::move(*this);
+    }
+    DivInPlace(modulus);
+    return std::move(*this);
+  }
+
+  [[nodiscard]]
   GenericPolynomial Rem(const GenericPolynomial& rhs) const& {
     if (data_.empty()) {
       return GenericPolynomial();
@@ -333,6 +428,23 @@ class GenericPolynomial
       return std::move(*this);
     }
     RemInPlace(rhs);
+    return std::move(*this);
+  }
+
+  [[nodiscard]]
+  GenericPolynomial Rem(const Modulus& modulus) const& {
+    if (data_.empty()) {
+      return GenericPolynomial();
+    }
+    return GenericPolynomial(*this).RemInPlace(modulus);
+  }
+
+  [[nodiscard]]
+  GenericPolynomial Rem(const Modulus& modulus) && {
+    if (data_.empty()) {
+      return std::move(*this);
+    }
+    RemInPlace(modulus);
     return std::move(*this);
   }
 
@@ -352,6 +464,37 @@ class GenericPolynomial
       return {GenericPolynomial(), std::move(*this)};
     }
     return std::move(*this).DivRemInPlace(rhs);
+  }
+
+  [[nodiscard]]
+  std::pair<GenericPolynomial, GenericPolynomial> DivRem(
+      const Modulus& modulus) const& {
+    if (data_.empty()) {
+      return {GenericPolynomial(), GenericPolynomial()};
+    }
+    return GenericPolynomial(*this).DivRemInPlace(modulus);
+  }
+
+  [[nodiscard]]
+  std::pair<GenericPolynomial, GenericPolynomial> DivRem(
+      const Modulus& modulus) && {
+    if (data_.empty()) {
+      return {GenericPolynomial(), std::move(*this)};
+    }
+    return std::move(*this).DivRemInPlace(modulus);
+  }
+
+  [[nodiscard]]
+  Modulus BuildModulus(size_t max_dividend_size) const {
+    return Modulus(Engine::BuildModulus(data_, max_dividend_size));
+  }
+
+  [[nodiscard]]
+  Modulus BuildModulus() const {
+    if (data_.empty()) {
+      return BuildModulus(0);
+    }
+    return BuildModulus(2 * data_.size() - 1);
   }
 
   [[nodiscard]]
@@ -393,6 +536,21 @@ class GenericPolynomial
     return *this;
   }
 
+  GenericPolynomial& DivInPlace(const Modulus& modulus) {
+    const size_t n = data_.size();
+    const size_t m = modulus.data_.polynomial.size();
+
+    if (n < m) {
+      data_.clear();
+      return *this;
+    }
+    if (m == 1) {
+      return Base::DivInPlace(modulus.data_.polynomial[0]);
+    }
+    data_ = Engine::Div(std::move(data_), modulus.data_);
+    return *this;
+  }
+
   GenericPolynomial& RemInPlace(const GenericPolynomial& rhs) {
     const size_t n = data_.size();
     const size_t m = rhs.data_.size();
@@ -405,6 +563,21 @@ class GenericPolynomial
       return *this;
     }
     data_ = Engine::Rem(std::move(data_), rhs.data_);
+    return *this;
+  }
+
+  GenericPolynomial& RemInPlace(const Modulus& modulus) {
+    const size_t n = data_.size();
+    const size_t m = modulus.data_.polynomial.size();
+
+    if (n < m) {
+      return *this;
+    }
+    if (m == 1) {
+      data_.clear();
+      return *this;
+    }
+    data_ = Engine::Rem(std::move(data_), modulus.data_);
     return *this;
   }
 
@@ -423,6 +596,26 @@ class GenericPolynomial
     }
 
     auto [quotient, remainder] = Engine::DivRem(std::move(data_), rhs.data_);
+    return {GenericPolynomial(std::move(quotient)),
+            GenericPolynomial(std::move(remainder))};
+  }
+
+  [[nodiscard]]
+  std::pair<GenericPolynomial, GenericPolynomial> DivRemInPlace(
+      const Modulus& modulus) && {
+    const size_t n = data_.size();
+    const size_t m = modulus.data_.polynomial.size();
+
+    if (n < m) {
+      return {GenericPolynomial(), std::move(*this)};
+    }
+    if (m == 1) {
+      Base::DivInPlace(modulus.data_.polynomial[0]);
+      return {std::move(*this), GenericPolynomial()};
+    }
+
+    auto [quotient, remainder] =
+        Engine::DivRem(std::move(data_), modulus.data_);
     return {GenericPolynomial(std::move(quotient)),
             GenericPolynomial(std::move(remainder))};
   }

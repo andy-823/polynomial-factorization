@@ -28,19 +28,25 @@ Element GenElement(RandomGen& gen) {
   return Element(result);
 }
 
+enum GenMode { kFixed, kRandom };
 // template because, maybe, different polynoms want different sizes
-template <typename Poly, typename RandomGen>
+template <typename Poly, size_t kMaxSize, GenMode kMode,
+          typename RandomGen>
 size_t GenSize(RandomGen& gen) {
-  constexpr size_t kMaxSize = 128;
-  return gen() % kMaxSize;
+  if constexpr (kMode == kFixed) {
+    return kMaxSize;
+  } else {
+    return gen() % kMaxSize;
+  }
 }
 
-template <concepts::Polynom Poly, typename RandomGen>
+template <concepts::Polynom Poly, size_t kMaxSize = 128,
+          GenMode kMode = kRandom, typename RandomGen>
 Poly GenPoly(RandomGen& gen) {
   using Element = typename Poly::Element;
 
   do {
-    std::vector<Element> elements(GenSize<Poly>(gen));
+    std::vector<Element> elements(GenSize<Poly, kMaxSize, kMode>(gen));
     for (auto& element : elements) {
       element = GenElement<Element>(gen);
     }

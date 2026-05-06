@@ -101,7 +101,8 @@ concept GaloisFieldElement =
 
 template <typename Engine, typename Elem>
 concept PolynomialEngine =
-    requires(std::vector<Elem> lhs, const std::vector<Elem>& rhs) {
+    requires(std::vector<Elem> lhs, const std::vector<Elem>& rhs,
+             const typename Engine::Modulus& modulus) {
       { Engine::Mul(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
       { Engine::Div(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
       { Engine::Rem(std::move(lhs), rhs) } -> std::same_as<std::vector<Elem>>;
@@ -111,10 +112,28 @@ concept PolynomialEngine =
       {
         Engine::Gcd(std::vector<Elem>{}, std::vector<Elem>{})
       } -> std::same_as<std::vector<Elem>>;
+      // operations with some precomputations
+      // this will make massive calculation of view
+      //   a * b (mod f)
+      // to cost significantly less computations
+      {
+        Engine::BuildModulus(rhs, size_t{})
+      } -> std::same_as<typename Engine::Modulus>;
+      {
+        Engine::Div(std::move(lhs), modulus)
+      } -> std::same_as<std::vector<Elem>>;
+      {
+        Engine::Rem(std::move(lhs), modulus)
+      } -> std::same_as<std::vector<Elem>>;
+      {
+        Engine::DivRem(std::move(lhs), modulus)
+      } -> std::same_as<std::pair<std::vector<Elem>, std::vector<Elem>>>;
     };
 
 template <typename Poly>
-concept Polynom = requires(const Poly& poly, typename Poly::Element value) {
+concept Polynom = requires(const Poly& poly, typename Poly::Element value,
+                           const typename Poly::Modulus& modulus,
+                           size_t power) {
   // This requirement is needed since sometimes we need
   // to perform arithmetic outside of polynom class
   requires GaloisFieldElement<typename Poly::Element>;
@@ -141,6 +160,12 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value) {
   { poly.Mul(value) } -> std::same_as<Poly>;
   { poly.Div(value) } -> std::same_as<Poly>;
 
+  // operations woth some precomputations
+  // power here is max divident size
+  { poly.BuildModulus(power) } -> std::same_as<typename Poly::Modulus>;
+  { poly.Div(modulus) } -> std::same_as<Poly>;
+  { poly.Rem(modulus) } -> std::same_as<Poly>;
+  { poly.DivRem(modulus) } -> std::same_as<std::pair<Poly, Poly>>;
   // This method has to follow this invariant
   //   a[0] + a[1] x + a[2] x^2 + ... + a[n] x^n
   // From lower power to higher
