@@ -10,8 +10,8 @@
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
 #include <factorization/polynomial/naive_polynomial.hpp>
-#include <factorization/parallel/thread_pool.hpp>
-#include <factorization/parallel/wait_group.hpp>
+#include <factorization/runtime/thread_pool.hpp>
+#include <factorization/runtime/wait_group.hpp>
 #include <factorization/solver/berlekamp.hpp>
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
@@ -62,9 +62,9 @@ void RunGaussExperiment(std::ostream& out, const ExperimentParams& params,
   constexpr int kFieldSize =
       utils::BinPow(Field::FieldBase(), Field::FieldPower());
 
-  parallel::ThreadPool runtime(params.thread_count);
-  parallel::WaitGroup wg;
-  runtime.Start();
+  runtime::ThreadPool thread_pool(params.thread_count);
+  runtime::WaitGroup wg;
+  thread_pool.Start();
 
   out << kFieldSize << "\t";
   for (size_t size = params.min_value; size <= params.max_value;
@@ -75,7 +75,7 @@ void RunGaussExperiment(std::ostream& out, const ExperimentParams& params,
 
     wg.Add(params.test_runs);
     for (size_t test = 0; test < params.test_runs; ++test) {
-      parallel::SubmitTask(&runtime, [&] {
+      runtime::SubmitTask(&thread_pool, [&] {
         solver::BerlekampExperiment<Poly> solver;
 
         RandomGen local_gen;
@@ -105,7 +105,7 @@ void RunGaussExperiment(std::ostream& out, const ExperimentParams& params,
   }
   out << "\n";
 
-  runtime.Stop();
+  thread_pool.Stop();
 }
 
 int main() {

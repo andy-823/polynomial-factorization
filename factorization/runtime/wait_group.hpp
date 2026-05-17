@@ -25,7 +25,7 @@
 #include <mutex>
 #include <condition_variable>
 
-namespace factorization::parallel {
+namespace factorization::runtime {
 
 class WaitGroup {
  public:
@@ -58,4 +58,4 @@ class WaitGroup {
   std::condition_variable jobs_done_;
 };
  
-}  // factorization::parallel
+}  // factorization::runtime

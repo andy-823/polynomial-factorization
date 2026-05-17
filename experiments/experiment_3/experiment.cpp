@@ -10,8 +10,8 @@
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
 #include <factorization/polynomial/naive_polynomial.hpp>
-#include <factorization/parallel/thread_pool.hpp>
-#include <factorization/parallel/wait_group.hpp>
+#include <factorization/runtime/thread_pool.hpp>
+#include <factorization/runtime/wait_group.hpp>
 #include <factorization/solver/berlekamp.hpp>
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
@@ -59,16 +59,16 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params,
   constexpr int kFieldSize =
       utils::BinPow(Field::FieldBase(), Field::FieldPower());
 
-  parallel::ThreadPool runtime(params.thread_count);
-  parallel::WaitGroup wg;
-  runtime.Start();
+  runtime::ThreadPool thread_pool(params.thread_count);
+  runtime::WaitGroup wg;
+  thread_pool.Start();
 
   std::vector<std::atomic<int64_t>> counts(params.test_value + 1);
 
   out << kFieldSize << "\t\t";
   wg.Add(params.test_runs);
   for (size_t test = 0; test < params.test_runs; ++test) {
-    parallel::SubmitTask(&runtime, [&] {
+    runtime::SubmitTask(&thread_pool, [&] {
       solver::BerlekampExperiment<Poly> solver;
 
       RandomGen local_gen;
@@ -88,7 +88,7 @@ void RunExperiment(std::ostream& out, const ExperimentParams& params,
   }
   out << "\n";
 
-  runtime.Stop();
+  thread_pool.Stop();
 }
 
 int main() {
@@ -102,12 +102,9 @@ int main() {
   using GF2_6 = galois_field::LogBasedField<2, 6, {1, 1, 0, 0, 0, 0, 1}>;
   using GF2_7 = galois_field::LogBasedField<2, 7, {1, 1, 0, 0, 0, 0, 0, 1}>;
   using GF2_8 = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
-  using GF2_9 =
-      galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
-  using GF2_10 =
-      galois_field::LogBasedField<2, 10, {1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1}>;
-  using GF2_16 = galois_field::LogBasedField<
-      2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
+  using GF2_9 = galois_field::LogBasedField<2, 9, {1, 0, 0, 0, 1, 0, 0, 0, 0, 1}>;
+  using GF2_10 = galois_field::LogBasedField<2, 10, {1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1}>;
+  using GF2_16 = galois_field::LogBasedField<2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
   // NOLINTEND
 
   constexpr int kRuns = 10'000;

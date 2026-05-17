@@ -22,50 +22,70 @@
 
 #pragma once
 
-#include <deque>
-#include <mutex>
-#include <condition_variable>
+#include <cassert>
+#include <vector>
+#include <thread>
 
 #include "task.hpp"
+#include "queue.hpp"
 
-namespace factorization::parallel {
+namespace factorization::runtime {
 
-class TasksBlockingQueue {
+struct IScheduler {
+  virtual void Submit(ITask*) = 0;
+
+ protected:
+  ~IScheduler() = default;
+};
+
+template <typename F>
+void SubmitTask(IScheduler* scheduler, F task) {
+  scheduler->Submit(new Task(std::move(task)));
+}
+
+class ThreadPool final : public IScheduler {
  public:
-  void Push(ITask* task) {
-    if (queue_is_closed_) {
-      return;
-    }
-    std::unique_lock lock(critical_);
-    tasks_.push_back(task);
-    something_happened_.notify_one();
+  explicit ThreadPool(size_t threads) : workers_(threads) {
   }
 
-  ITask* TryPop() {
-    std::unique_lock lock(critical_);
-    while (tasks_.empty() && !queue_is_closed_) {
-      something_happened_.wait(lock);
-    }
-    if (tasks_.empty()) {
-      return nullptr;
-    }
-    ITask* result = tasks_.front();
-    tasks_.pop_front();
-    return result;
+  ~ThreadPool() {
+    assert(workers_.empty());
   }
 
-  void Close() {
-    std::unique_lock lock(critical_);
-    queue_is_closed_ = true;
-    something_happened_.notify_all();
+  // Non-copyable
+  ThreadPool(const ThreadPool&) = delete;
+  ThreadPool& operator=(const ThreadPool&) = delete;
+
+  // Non-movable
+  ThreadPool(ThreadPool&&) = delete;
+  ThreadPool& operator=(ThreadPool&&) = delete;
+
+  void Start() {
+    for (auto& worker : workers_) {
+      worker = std::thread([&] {
+        while (auto task = tasks_.TryPop()) {
+          task->Run();
+        }
+      });
+    }
+  }
+
+  // task::IScheduler
+  void Submit(ITask* task) override {
+    tasks_.Push(task);
+  }
+
+  void Stop() {
+    tasks_.Close();
+    for (auto& worker : workers_) {
+      worker.join();
+    }
+    workers_.resize(0);
   }
 
  private:
-  std::deque<ITask*> tasks_;
-
-  bool queue_is_closed_{false};
-  std::mutex critical_;
-  std::condition_variable something_happened_;
+  std::vector<std::thread> workers_;
+  TasksBlockingQueue tasks_;
 };
 
-}  // namepsace factorization::parallel
+}  // namespace factorization::runtime

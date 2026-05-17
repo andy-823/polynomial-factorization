@@ -25,7 +25,7 @@
 #include <memory>
 #include <utility>
 
-namespace factorization::parallel {
+namespace factorization::runtime {
 
 namespace internal {
 
@@ -72,7 +72,7 @@ class UniqueFunction {
   std::unique_ptr<IRunnable> body_;
 };
 
-}  // namepsace internal
+}  // namespace internal
 
 struct ITask {
   virtual void Run() noexcept = 0;
@@ -103,4 +103,4 @@ class Task : public ITask {
 };
 
 
-}  // factorization::parallel
+}  // factorization::runtime
