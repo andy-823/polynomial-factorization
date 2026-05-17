@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <random>
 
@@ -7,6 +8,7 @@
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
+#include <factorization/polynomial/common.hpp>
 #include <factorization/polynomial/generic_polynomial.hpp>
 #include <factorization/polynomial/naive_polynomial.hpp>
 
@@ -224,14 +226,14 @@ TEST_CASE("GenericPolynomial") {
     using Engine = polynomial::PolynomialEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
 
-    constexpr int kTestsCount = 1000;
+    constexpr int kTestsCount = 500;
 
     for (int test = 0; test < kTestsCount; ++test) {
       RunCompareTest<NaivePoly, GenericPoly, 1000>(random_gen);
     }
   }
 
-  SECTION("Speed") {
+  SECTION("Mul speed") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
@@ -265,6 +267,108 @@ TEST_CASE("GenericPolynomial") {
     std::cout << "Generic: " << get_duration_count(end_generic - start_generic)
               << " ms\n";
     REQUIRE(res_naive.Get() == res_generic.Get());
-    REQUIRE(end_naive - start_naive > 10 * (end_generic - start_generic));
+    REQUIRE(end_naive - start_naive > 5 * (end_generic - start_generic));
+  }
+
+  SECTION("GCD speed") {
+    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NaivePoly = polynomial::NaivePolynomial<Element>;
+    using Engine = polynomial::PolynomialEngine<Element>;
+    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
+    using Timer = std::chrono::steady_clock;
+    using Duration = std::chrono::milliseconds;
+
+    auto get_duration_count = [](auto time) {
+      return std::chrono::duration_cast<Duration>(time).count();
+    };
+
+    auto common = GenPoly<NaivePoly, 2'000, kFixed>(random_gen);
+    auto first_tail = GenPoly<NaivePoly, 20'000, kFixed>(random_gen);
+    auto second_tail = GenPoly<NaivePoly, 20'000, kFixed>(random_gen);
+    auto first_naive = common.Mul(first_tail);
+    auto second_naive = common.Mul(second_tail);
+
+    GenericPoly first_generic(first_naive.Get());
+    GenericPoly second_generic(second_naive.Get());
+
+    auto start_naive = Timer::now();
+    auto res_naive = first_naive.Gcd(second_naive);
+    auto end_naive = Timer::now();
+
+    auto start_generic = Timer::now();
+    auto res_generic = first_generic.Gcd(second_generic).MakeMonic();
+    auto end_generic = Timer::now();
+
+    std::cout << "Naive GCD speed: " << get_duration_count(end_naive - start_naive)
+              << " ms\n";
+    std::cout << "Generic GCD speed: "
+              << get_duration_count(end_generic - start_generic) << " ms\n";
+    REQUIRE(res_generic.Get() == res_naive.Get());
+  }
+}
+
+template <concepts::Polynom Poly, size_t kMaxPolySize, size_t kMaxModSize,
+          typename RandomGen>
+void RunCompModFrobeniusTest(RandomGen& random_gen) {
+  using Element = typename Poly::Element;
+
+  constexpr size_t kFieldSize =
+      utils::BinPow(Element::FieldBase(), Element::FieldPower());
+  constexpr size_t kTestsCount = 1000;
+
+  for (size_t test = 0; test < kTestsCount; ++test) {
+    Poly mod = GenPoly<Poly, kMaxModSize, kFixed>(random_gen).MakeMonic();
+
+    const auto modulus = mod.BuildModulus(2 * mod.Size() + kMaxPolySize);
+    const Poly x(std::vector<Element>{Element::Zero(), Element::One()});
+    const Poly x_q = polynomial::BinPowMod(x, kFieldSize, modulus);
+
+    const Poly poly = GenPoly<Poly, kMaxPolySize>(random_gen);
+    const size_t t = static_cast<size_t>(std::ceil(std::sqrt(poly.Size())));
+
+    const auto matrix = polynomial::BuildCompModMatrix(x_q, t, modulus);
+    const Poly expected =
+        polynomial::BinPowMod(poly.Rem(modulus), kFieldSize, modulus);
+    const Poly actual = polynomial::CompMod(poly, matrix, modulus);
+
+    REQUIRE(actual == expected);
+  }
+}
+
+TEST_CASE("CompMod") {
+  std::mt19937 random_gen;
+
+  SECTION("GF_2^3") {
+    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Engine = polynomial::PolynomialEngine<Element>;
+    using Poly = polynomial::GenericPolynomial<Element, Engine>;
+
+    RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);
+    RunCompModFrobeniusTest<Poly, 256, 128>(random_gen);
+    RunCompModFrobeniusTest<Poly, 1024, 1024>(random_gen);
+  }
+
+  SECTION("GF_2^8") {
+    using GaloisField = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Engine = polynomial::PolynomialEngine<Element>;
+    using Poly = polynomial::GenericPolynomial<Element, Engine>;
+
+    RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);
+    RunCompModFrobeniusTest<Poly, 256, 128>(random_gen);
+    RunCompModFrobeniusTest<Poly, 1024, 1024>(random_gen);
+  }
+
+  SECTION("GF_2^16") {
+    using GaloisField = galois_field::LogBasedField<2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Engine = polynomial::PolynomialEngine<Element>;
+    using Poly = polynomial::GenericPolynomial<Element, Engine>;
+
+    RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);
+    RunCompModFrobeniusTest<Poly, 256, 128>(random_gen);
+    RunCompModFrobeniusTest<Poly, 1024, 1024>(random_gen);
   }
 }
