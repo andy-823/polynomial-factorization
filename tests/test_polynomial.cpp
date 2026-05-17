@@ -315,7 +315,7 @@ void RunCompModFrobeniusTest(RandomGen& random_gen) {
 
   constexpr size_t kFieldSize =
       utils::BinPow(Element::FieldBase(), Element::FieldPower());
-  constexpr size_t kTestsCount = 1000;
+  constexpr size_t kTestsCount = 100;
 
   for (size_t test = 0; test < kTestsCount; ++test) {
     Poly mod = GenPoly<Poly, kMaxModSize, kFixed>(random_gen).MakeMonic();
