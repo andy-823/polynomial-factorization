@@ -184,6 +184,7 @@ TEST_CASE("DistinctDegreeFactorization") {
 
     check(ddf::naive::DistinctDegreeFactorize(factorizing));
     check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
+    check(ddf::own_lazy::DistinctDegreeFactorize(factorizing));
   }
 
   SECTION("RandomSquareFreeProducts") {
@@ -232,6 +233,7 @@ TEST_CASE("DistinctDegreeFactorization") {
 
       check(ddf::naive::DistinctDegreeFactorize(factorizing));
       check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
+      check(ddf::own_lazy::DistinctDegreeFactorize(factorizing));
     }
   }
 }
@@ -264,6 +266,10 @@ TEST_CASE("DistinctDegreeFactorizationStressAgainstNaive") {
         REQUIRE(
             normalize(
                 ddf::ntl_like::DistinctDegreeFactorize(square_free_factor)) ==
+            normalize(ddf::naive::DistinctDegreeFactorize(square_free_factor)));
+        REQUIRE(
+            normalize(
+                ddf::own_lazy::DistinctDegreeFactorize(square_free_factor)) ==
             normalize(ddf::naive::DistinctDegreeFactorize(square_free_factor)));
       }
     }
