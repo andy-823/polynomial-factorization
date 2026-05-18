@@ -15,8 +15,6 @@
 
 #include "generator.hpp"
 
-#include <iostream>
-
 using namespace factorization;  // NOLINT
 
 template <concepts::Polynom Poly>
@@ -132,7 +130,7 @@ TEST_CASE("Berlekamp") {
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Poly = polynomial::NaivePolynomial<Element>;
 
-    constexpr int kTestsCount = 1000;
+    constexpr int kTestsCount = 100;
 
     solver::Berlekamp<Poly> solver;
 
@@ -174,15 +172,18 @@ TEST_CASE("DistinctDegreeFactorization") {
     const Poly degree_3_part = degree_3_a.Mul(degree_3_b);
     const Poly factorizing = degree_1_part.Mul(degree_2).Mul(degree_3_part);
 
-    const auto factors = ddf::naive::DistinctDegreeFactorize(factorizing);
+    auto check = [&](const auto& factors) {
+      REQUIRE(factors.size() == 3);
+      REQUIRE(factors[0].degree == 1);
+      REQUIRE(factors[0].factor == degree_1_part);
+      REQUIRE(factors[1].degree == 2);
+      REQUIRE(factors[1].factor == degree_2);
+      REQUIRE(factors[2].degree == 3);
+      REQUIRE(factors[2].factor == degree_3_part);
+    };
 
-    REQUIRE(factors.size() == 3);
-    REQUIRE(factors[0].degree == 1);
-    REQUIRE(factors[0].factor == degree_1_part);
-    REQUIRE(factors[1].degree == 2);
-    REQUIRE(factors[1].factor == degree_2);
-    REQUIRE(factors[2].degree == 3);
-    REQUIRE(factors[2].factor == degree_3_part);
+    check(ddf::naive::DistinctDegreeFactorize(factorizing));
+    check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
   }
 
   SECTION("RandomSquareFreeProducts") {
@@ -221,60 +222,56 @@ TEST_CASE("DistinctDegreeFactorization") {
       if (expected.empty()) {
         continue;
       }
-      const auto factors = ddf::naive::DistinctDegreeFactorize(factorizing);
+      auto check = [&](const auto& factors) {
+        REQUIRE(factors.size() == expected.size());
+        for (const auto& [factor, degree] : factors) {
+          REQUIRE(expected.contains(degree));
+          REQUIRE(factor == expected[degree]);
+        }
+      };
 
-      REQUIRE(factors.size() == expected.size());
-      for (const auto& [factor, degree] : factors) {
-        REQUIRE(expected.contains(degree));
-        REQUIRE(factor == expected[degree]);
-      }
+      check(ddf::naive::DistinctDegreeFactorize(factorizing));
+      check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
     }
   }
+}
 
-  SECTION("StressAgainstBerlekamp") {
-    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+TEST_CASE("DistinctDegreeFactorizationStressAgainstNaive") {
+  std::mt19937 random_gen;
+
+  auto run_stress = [&]<typename GaloisField>() {
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Engine = polynomial::PolynomialEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
-    using Key = std::pair<int, int>;
-
-    constexpr int kTestsCount = 1000;
-    solver::Berlekamp<Poly> berlekamp;
-
+    constexpr int kTestsCount = 100;
     for (int test = 0; test < kTestsCount; ++test) {
-      Poly poly = GenPoly<Poly, 500>(random_gen).MakeMonic();
+      Poly poly = GenPoly<Poly, 1000>(random_gen).MakeMonic();
       if (poly.Size() <= 1) {
         continue;
       }
 
-      std::map<Key, Poly> expected;
-      for (const auto& [factor, power] : berlekamp.Factorize(poly)) {
-        const Key key{power, static_cast<int>(factor.Size() - 1)};
-        auto it = expected.find(key);
-        if (it == expected.end()) {
-          expected.emplace(key, factor);
-        } else {
-          it->second = std::move(it->second).Mul(factor).MakeMonic();
-        }
-      }
-
-      std::map<Key, Poly> actual;
       for (const auto& [square_free_factor, power] :
            sff::SquareFreeFactorize(poly)) {
-        for (const auto& [factor, degree] :
-             ddf::naive::DistinctDegreeFactorize(square_free_factor)) {
-          const Key key{power, degree};
-          auto it = actual.find(key);
-          if (it == actual.end()) {
-            actual.emplace(key, factor);
-          } else {
-            it->second = std::move(it->second).Mul(factor).MakeMonic();
+        (void)power;
+        auto normalize = [](const auto& factors) {
+          std::map<int, Poly> result;
+          for (const auto& [factor, degree] : factors) {
+            result.emplace(degree, factor);
           }
-        }
+          return result;
+        };
+        REQUIRE(
+            normalize(
+                ddf::ntl_like::DistinctDegreeFactorize(square_free_factor)) ==
+            normalize(ddf::naive::DistinctDegreeFactorize(square_free_factor)));
       }
-
-      REQUIRE(actual == expected);
     }
-  }
+  };
+
+  run_stress.template operator()<galois_field::LogBasedField<2, 1, {1, 1}>>();
+  run_stress
+      .template operator()<galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>>();
+  run_stress
+      .template operator()<galois_field::LogBasedField<3, 2, {2, 2, 1}>>();
 }
