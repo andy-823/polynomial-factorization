@@ -6,11 +6,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <factorization/concepts.hpp>
-#include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
+#include <factorization/galois_field/log_based_field.hpp>
+#include <factorization/galois_field/prime_ring.hpp>
 #include <factorization/polynomial/common.hpp>
 #include <factorization/polynomial/generic_polynomial.hpp>
+#include <factorization/polynomial/karatsuba_engine.hpp>
 #include <factorization/polynomial/naive_polynomial.hpp>
+#include <factorization/polynomial/ntt_engine.hpp>
 
 #include "generator.hpp"
 
@@ -195,7 +198,7 @@ TEST_CASE("GenericPolynomial") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
 
     constexpr int kTestsCount = 10000;
@@ -209,7 +212,7 @@ TEST_CASE("GenericPolynomial") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
 
     constexpr int kTestsCount = 10000;
@@ -223,7 +226,7 @@ TEST_CASE("GenericPolynomial") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
 
     constexpr int kTestsCount = 500;
@@ -233,11 +236,94 @@ TEST_CASE("GenericPolynomial") {
     }
   }
 
+  SECTION("NTT") {
+    using GaloisField = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NaivePoly = polynomial::NaivePolynomial<Element>;
+    using Engine = polynomial::NttEngine<Element>;
+    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
+
+    constexpr int kTestsCount = 20;
+
+    for (int test = 0; test < kTestsCount; ++test) {
+      RunCompareTest<NaivePoly, GenericPoly, 700>(random_gen);
+    }
+  }
+
+  SECTION("NTT mul speed") {
+    using GaloisField = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using KaratsubaEngine = polynomial::KaratsubaEngine<Element>;
+    using NttEngine = polynomial::NttEngine<Element>;
+    using KaratsubaPoly =
+        polynomial::GenericPolynomial<Element, KaratsubaEngine>;
+    using NttPoly = polynomial::GenericPolynomial<Element, NttEngine>;
+    using Timer = std::chrono::steady_clock;
+    using Duration = std::chrono::microseconds;
+
+    auto get_duration_count = [](auto time) {
+      return std::chrono::duration_cast<Duration>(time).count();
+    };
+
+    auto first_karatsuba =
+        GenPoly<KaratsubaPoly, 1'000'000, kFixed>(random_gen);
+    auto second_karatsuba =
+        GenPoly<KaratsubaPoly, 1'000'000, kFixed>(random_gen);
+    NttPoly first_ntt(first_karatsuba.Get());
+    NttPoly second_ntt(second_karatsuba.Get());
+
+    const auto start_karatsuba = Timer::now();
+    const auto karatsuba_result = first_karatsuba.Mul(second_karatsuba);
+    const auto end_karatsuba = Timer::now();
+
+    const auto start_ntt = Timer::now();
+    const auto ntt_result = first_ntt.Mul(second_ntt);
+    const auto end_ntt = Timer::now();
+
+    std::cout << "Karatsuba PrimeRing<17> degree 1m: "
+              << get_duration_count(end_karatsuba - start_karatsuba) << " us\n";
+    std::cout << "NTT PrimeRing<17> degree 1m: "
+              << get_duration_count(end_ntt - start_ntt) << " us\n";
+    REQUIRE(ntt_result.Get() == karatsuba_result.Get());
+  }
+
+  SECTION("NTT rem speed") {
+    using GaloisField = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using Engine = polynomial::NttEngine<Element>;
+    using Poly = polynomial::GenericPolynomial<Element, Engine>;
+    using Timer = std::chrono::steady_clock;
+    using Duration = std::chrono::microseconds;
+
+    auto get_duration_count = [](auto time) {
+      return std::chrono::duration_cast<Duration>(time).count();
+    };
+
+    const auto value = GenPoly<Poly, 1'000'000, kFixed>(random_gen);
+    const auto divisor = GenPoly<Poly, 500'000, kFixed>(random_gen).MakeMonic();
+    const auto modulus = divisor.BuildModulus(value.Size());
+
+    const auto start_plain = Timer::now();
+    const auto plain_rem = value.Rem(divisor);
+    const auto end_plain = Timer::now();
+
+    const auto start_precomputed = Timer::now();
+    const auto precomputed_rem = value.Rem(modulus);
+    const auto end_precomputed = Timer::now();
+
+    std::cout << "NTT Rem without precompute: "
+              << get_duration_count(end_plain - start_plain) << " us\n";
+    std::cout << "NTT Rem with precompute: "
+              << get_duration_count(end_precomputed - start_precomputed)
+              << " us\n";
+    REQUIRE(precomputed_rem == plain_rem);
+  }
+
   SECTION("Mul speed") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
     using Timer = std::chrono::steady_clock;
     using Duration = std::chrono::milliseconds;
@@ -274,7 +360,7 @@ TEST_CASE("GenericPolynomial") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
     using Timer = std::chrono::steady_clock;
     using Duration = std::chrono::milliseconds;
@@ -300,8 +386,8 @@ TEST_CASE("GenericPolynomial") {
     auto res_generic = first_generic.Gcd(second_generic).MakeMonic();
     auto end_generic = Timer::now();
 
-    std::cout << "Naive GCD speed: " << get_duration_count(end_naive - start_naive)
-              << " ms\n";
+    std::cout << "Naive GCD speed: "
+              << get_duration_count(end_naive - start_naive) << " ms\n";
     std::cout << "Generic GCD speed: "
               << get_duration_count(end_generic - start_generic) << " ms\n";
     REQUIRE(res_generic.Get() == res_naive.Get());
@@ -342,7 +428,7 @@ TEST_CASE("CompMod") {
   SECTION("GF_2^3") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
     RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);
@@ -351,9 +437,10 @@ TEST_CASE("CompMod") {
   }
 
   SECTION("GF_2^8") {
-    using GaloisField = galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
+    using GaloisField =
+        galois_field::LogBasedField<2, 8, {1, 0, 1, 1, 1, 0, 0, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
     RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);
@@ -362,9 +449,10 @@ TEST_CASE("CompMod") {
   }
 
   SECTION("GF_2^16") {
-    using GaloisField = galois_field::LogBasedField<2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
+    using GaloisField = galois_field::LogBasedField<
+        2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
     RunCompModFrobeniusTest<Poly, 16, 16>(random_gen);

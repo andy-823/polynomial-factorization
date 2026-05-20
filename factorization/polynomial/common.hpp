@@ -121,7 +121,7 @@ Poly CompMod(const Poly& poly,
     if (!result.IsZero()) {
       result = std::move(result).Mul(giant_step).Rem(mod);
     }
-    result = std::move(result).Add(blocks[block]).Rem(mod);
+    result = std::move(result).Add(blocks[block]);
   }
   return result;
 }

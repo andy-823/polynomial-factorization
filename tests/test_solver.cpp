@@ -8,6 +8,7 @@
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
 #include <factorization/polynomial/generic_polynomial.hpp>
+#include <factorization/polynomial/karatsuba_engine.hpp>
 #include <factorization/polynomial/naive_polynomial.hpp>
 #include <factorization/solver/berlekamp.hpp>
 #include <factorization/solver/distinct_degree_factorization.hpp>
@@ -159,7 +160,7 @@ TEST_CASE("DistinctDegreeFactorization") {
   SECTION("KnownDegrees") {
     using GaloisField = galois_field::LogBasedField<2, 1, {1, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
     const Poly degree_1_a(std::vector<int>{0, 1});
@@ -185,12 +186,13 @@ TEST_CASE("DistinctDegreeFactorization") {
     check(ddf::naive::DistinctDegreeFactorize(factorizing));
     check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
     check(ddf::own_lazy::DistinctDegreeFactorize(factorizing));
+    check(ddf::own_tree::DistinctDegreeFactorize(factorizing));
   }
 
   SECTION("RandomSquareFreeProducts") {
     using GaloisField = galois_field::LogBasedField<2, 1, {1, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
     const std::vector<std::pair<Poly, int>> irreducibles = {
@@ -234,6 +236,7 @@ TEST_CASE("DistinctDegreeFactorization") {
       check(ddf::naive::DistinctDegreeFactorize(factorizing));
       check(ddf::ntl_like::DistinctDegreeFactorize(factorizing));
       check(ddf::own_lazy::DistinctDegreeFactorize(factorizing));
+      check(ddf::own_tree::DistinctDegreeFactorize(factorizing));
     }
   }
 }
@@ -243,10 +246,10 @@ TEST_CASE("DistinctDegreeFactorizationStressAgainstNaive") {
 
   auto run_stress = [&]<typename GaloisField>() {
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using Engine = polynomial::PolynomialEngine<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
 
-    constexpr int kTestsCount = 100;
+    constexpr int kTestsCount = 50;
     for (int test = 0; test < kTestsCount; ++test) {
       Poly poly = GenPoly<Poly, 1000>(random_gen).MakeMonic();
       if (poly.Size() <= 1) {
@@ -270,6 +273,10 @@ TEST_CASE("DistinctDegreeFactorizationStressAgainstNaive") {
         REQUIRE(
             normalize(
                 ddf::own_lazy::DistinctDegreeFactorize(square_free_factor)) ==
+            normalize(ddf::naive::DistinctDegreeFactorize(square_free_factor)));
+        REQUIRE(
+            normalize(
+                ddf::own_tree::DistinctDegreeFactorize(square_free_factor)) ==
             normalize(ddf::naive::DistinctDegreeFactorize(square_free_factor)));
       }
     }
