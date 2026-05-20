@@ -5,8 +5,9 @@
 #include <catch2/matchers/catch_matchers_range_equals.hpp>
 
 #include <factorization/concepts.hpp>
-#include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>
+#include <factorization/galois_field/log_based_field.hpp>
+#include <factorization/galois_field/prime_ring.hpp>
 
 using namespace factorization;       // NOLINT
 using Catch::Matchers::RangeEquals;  // NOLINT
@@ -149,6 +150,41 @@ TEST_CASE("FieldElementWrapper") {
       Element({0, 2}),
       Element({1, 2}),
       Element({2, 2}),
+  });
+  CHECK_THAT(Element::AllFieldElements(), RangeEquals(elements));
+
+  RunTests<Element>(tests);
+}
+
+TEST_CASE("PrimeRingFieldElementWrapper") {
+  std::vector<Test<uint32_t, 1>> tests = {
+      {QueryType::kAdd, {3}, {4}, {0}},
+      {QueryType::kAdd, {5}, {6}, {4}},
+
+      {QueryType::kNegative, {0}, {0}, {0}},
+      {QueryType::kNegative, {2}, {0}, {5}},
+
+      {QueryType::kMultiply, {3}, {5}, {1}},
+      {QueryType::kMultiply, {6}, {6}, {1}},
+
+      {QueryType::kInverse, {2}, {0}, {4}},
+      {QueryType::kInverse, {3}, {0}, {5}},
+  };
+
+  using GaloisField = galois_field::PrimeRing<7>;
+  using Element = galois_field::FieldElementWrapper<GaloisField>;
+
+  STATIC_REQUIRE(Element::FieldBase() == 7);
+  STATIC_REQUIRE(Element::FieldPower() == 1);
+
+  std::vector<Element> elements({
+      Element(0),
+      Element(1),
+      Element(2),
+      Element(3),
+      Element(4),
+      Element(5),
+      Element(6),
   });
   CHECK_THAT(Element::AllFieldElements(), RangeEquals(elements));
 

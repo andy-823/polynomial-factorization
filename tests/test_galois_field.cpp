@@ -5,6 +5,7 @@
 
 #include <factorization/concepts.hpp>
 #include <factorization/galois_field/log_based_field.hpp>
+#include <factorization/galois_field/prime_ring.hpp>
 
 using namespace factorization;  // NOLINT
 
@@ -41,7 +42,7 @@ void RunTests(const std::vector<Test<Int>>& tests) {
       case QueryType::kMultiply:
         REQUIRE(field.Multiply(test.first, test.second) == test.expected);
         REQUIRE(field.Multiply(test.first, field.One()) == test.first);
-        if (test.expected != field.Zero()){
+        if (test.expected != field.Zero()) {
           REQUIRE(field.Divide(test.expected, test.first) == test.second);
         }
         break;
@@ -62,106 +63,63 @@ void RunTests(const std::vector<Test<Int>>& tests) {
 
 TEST_CASE("LogBaseGaloisField") {
   static_assert(utils::BinPow(2, 2) == 4);
-  
+
   SECTION("GF8") {
     std::vector<Test<int64_t>> tests = {
-      {QueryType::kMultiply, 0, 0, 0},
-      {QueryType::kMultiply, 0, 1, 0},
-      {QueryType::kMultiply, 0, 2, 0},
-      {QueryType::kMultiply, 0, 3, 0},
-      {QueryType::kMultiply, 0, 4, 0},
-      {QueryType::kMultiply, 0, 5, 0},
-      {QueryType::kMultiply, 0, 6, 0},
-      {QueryType::kMultiply, 0, 7, 0},
+        {QueryType::kMultiply, 0, 0, 0},  {QueryType::kMultiply, 0, 1, 0},
+        {QueryType::kMultiply, 0, 2, 0},  {QueryType::kMultiply, 0, 3, 0},
+        {QueryType::kMultiply, 0, 4, 0},  {QueryType::kMultiply, 0, 5, 0},
+        {QueryType::kMultiply, 0, 6, 0},  {QueryType::kMultiply, 0, 7, 0},
 
-      {QueryType::kMultiply, 1, 0, 0},
-      {QueryType::kMultiply, 1, 1, 1},
-      {QueryType::kMultiply, 1, 2, 2},
-      {QueryType::kMultiply, 1, 3, 3},
-      {QueryType::kMultiply, 1, 4, 4},
-      {QueryType::kMultiply, 1, 5, 5},
-      {QueryType::kMultiply, 1, 6, 6},
-      {QueryType::kMultiply, 1, 7, 7},
-  
-      {QueryType::kMultiply, 2, 0, 0},
-      {QueryType::kMultiply, 2, 1, 2},
-      {QueryType::kMultiply, 2, 2, 4},
-      {QueryType::kMultiply, 2, 3, 6},
-      {QueryType::kMultiply, 2, 4, 3},
-      {QueryType::kMultiply, 2, 5, 1},
-      {QueryType::kMultiply, 2, 6, 7},
-      {QueryType::kMultiply, 2, 7, 5},
+        {QueryType::kMultiply, 1, 0, 0},  {QueryType::kMultiply, 1, 1, 1},
+        {QueryType::kMultiply, 1, 2, 2},  {QueryType::kMultiply, 1, 3, 3},
+        {QueryType::kMultiply, 1, 4, 4},  {QueryType::kMultiply, 1, 5, 5},
+        {QueryType::kMultiply, 1, 6, 6},  {QueryType::kMultiply, 1, 7, 7},
 
-      {QueryType::kMultiply, 3, 0, 0},
-      {QueryType::kMultiply, 3, 1, 3},
-      {QueryType::kMultiply, 3, 2, 6},
-      {QueryType::kMultiply, 3, 3, 5},
-      {QueryType::kMultiply, 3, 4, 7},
-      {QueryType::kMultiply, 3, 5, 4},
-      {QueryType::kMultiply, 3, 6, 1},
-      {QueryType::kMultiply, 3, 7, 2},
+        {QueryType::kMultiply, 2, 0, 0},  {QueryType::kMultiply, 2, 1, 2},
+        {QueryType::kMultiply, 2, 2, 4},  {QueryType::kMultiply, 2, 3, 6},
+        {QueryType::kMultiply, 2, 4, 3},  {QueryType::kMultiply, 2, 5, 1},
+        {QueryType::kMultiply, 2, 6, 7},  {QueryType::kMultiply, 2, 7, 5},
 
-      {QueryType::kMultiply, 4, 0, 0},
-      {QueryType::kMultiply, 4, 1, 4},
-      {QueryType::kMultiply, 4, 2, 3},
-      {QueryType::kMultiply, 4, 3, 7},
-      {QueryType::kMultiply, 4, 4, 6},
-      {QueryType::kMultiply, 4, 5, 2},
-      {QueryType::kMultiply, 4, 6, 5},
-      {QueryType::kMultiply, 4, 7, 1},
+        {QueryType::kMultiply, 3, 0, 0},  {QueryType::kMultiply, 3, 1, 3},
+        {QueryType::kMultiply, 3, 2, 6},  {QueryType::kMultiply, 3, 3, 5},
+        {QueryType::kMultiply, 3, 4, 7},  {QueryType::kMultiply, 3, 5, 4},
+        {QueryType::kMultiply, 3, 6, 1},  {QueryType::kMultiply, 3, 7, 2},
 
-      {QueryType::kMultiply, 5, 0, 0},
-      {QueryType::kMultiply, 5, 1, 5},
-      {QueryType::kMultiply, 5, 2, 1},
-      {QueryType::kMultiply, 5, 3, 4},
-      {QueryType::kMultiply, 5, 4, 2},
-      {QueryType::kMultiply, 5, 5, 7},
-      {QueryType::kMultiply, 5, 6, 3},
-      {QueryType::kMultiply, 5, 7, 6},
+        {QueryType::kMultiply, 4, 0, 0},  {QueryType::kMultiply, 4, 1, 4},
+        {QueryType::kMultiply, 4, 2, 3},  {QueryType::kMultiply, 4, 3, 7},
+        {QueryType::kMultiply, 4, 4, 6},  {QueryType::kMultiply, 4, 5, 2},
+        {QueryType::kMultiply, 4, 6, 5},  {QueryType::kMultiply, 4, 7, 1},
 
-      {QueryType::kMultiply, 6, 0, 0},
-      {QueryType::kMultiply, 6, 1, 6},
-      {QueryType::kMultiply, 6, 2, 7},
-      {QueryType::kMultiply, 6, 3, 1},
-      {QueryType::kMultiply, 6, 4, 5},
-      {QueryType::kMultiply, 6, 5, 3},
-      {QueryType::kMultiply, 6, 6, 2},
-      {QueryType::kMultiply, 6, 7, 4},
+        {QueryType::kMultiply, 5, 0, 0},  {QueryType::kMultiply, 5, 1, 5},
+        {QueryType::kMultiply, 5, 2, 1},  {QueryType::kMultiply, 5, 3, 4},
+        {QueryType::kMultiply, 5, 4, 2},  {QueryType::kMultiply, 5, 5, 7},
+        {QueryType::kMultiply, 5, 6, 3},  {QueryType::kMultiply, 5, 7, 6},
 
-      {QueryType::kMultiply, 7, 0, 0},
-      {QueryType::kMultiply, 7, 1, 7},
-      {QueryType::kMultiply, 7, 2, 5},
-      {QueryType::kMultiply, 7, 3, 2},
-      {QueryType::kMultiply, 7, 4, 1},
-      {QueryType::kMultiply, 7, 5, 6},
-      {QueryType::kMultiply, 7, 6, 4},
-      {QueryType::kMultiply, 7, 7, 3},
+        {QueryType::kMultiply, 6, 0, 0},  {QueryType::kMultiply, 6, 1, 6},
+        {QueryType::kMultiply, 6, 2, 7},  {QueryType::kMultiply, 6, 3, 1},
+        {QueryType::kMultiply, 6, 4, 5},  {QueryType::kMultiply, 6, 5, 3},
+        {QueryType::kMultiply, 6, 6, 2},  {QueryType::kMultiply, 6, 7, 4},
 
-      {QueryType::kNegative, 1, -1, 1},
-      {QueryType::kNegative, 2, -1, 2},
-      {QueryType::kNegative, 4, -1, 4},
-      {QueryType::kNegative, 7, -1, 7},
-      {QueryType::kAdd, 0, 2, 2},
-      {QueryType::kAdd, 3, 5, 6},
-      {QueryType::kAdd, 4, 4, 0},
-      {QueryType::kAdd, 1, 6, 7},
+        {QueryType::kMultiply, 7, 0, 0},  {QueryType::kMultiply, 7, 1, 7},
+        {QueryType::kMultiply, 7, 2, 5},  {QueryType::kMultiply, 7, 3, 2},
+        {QueryType::kMultiply, 7, 4, 1},  {QueryType::kMultiply, 7, 5, 6},
+        {QueryType::kMultiply, 7, 6, 4},  {QueryType::kMultiply, 7, 7, 3},
 
-      {QueryType::kInverse, 1, -1, 1},
-      {QueryType::kInverse, 2, -1, 5},
-      {QueryType::kInverse, 3, -1, 6},
-      {QueryType::kInverse, 4, -1, 7},
-      {QueryType::kInverse, 5, -1, 2},
-      {QueryType::kInverse, 6, -1, 3},
-      {QueryType::kInverse, 7, -1, 4},
+        {QueryType::kNegative, 1, -1, 1}, {QueryType::kNegative, 2, -1, 2},
+        {QueryType::kNegative, 4, -1, 4}, {QueryType::kNegative, 7, -1, 7},
+        {QueryType::kAdd, 0, 2, 2},       {QueryType::kAdd, 3, 5, 6},
+        {QueryType::kAdd, 4, 4, 0},       {QueryType::kAdd, 1, 6, 7},
 
-      {QueryType::kPow, 2, 0, 1},
-      {QueryType::kPow, 2, 1, 2},
-      {QueryType::kPow, 2, 2, 4},
-      {QueryType::kPow, 2, 3, 3},
-      {QueryType::kPow, 2, 4, 6},
-      {QueryType::kPow, 2, 5, 7},
-      {QueryType::kPow, 2, 6, 5},
-      {QueryType::kPow, 2, 7, 1},
+        {QueryType::kInverse, 1, -1, 1},  {QueryType::kInverse, 2, -1, 5},
+        {QueryType::kInverse, 3, -1, 6},  {QueryType::kInverse, 4, -1, 7},
+        {QueryType::kInverse, 5, -1, 2},  {QueryType::kInverse, 6, -1, 3},
+        {QueryType::kInverse, 7, -1, 4},
+
+        {QueryType::kPow, 2, 0, 1},       {QueryType::kPow, 2, 1, 2},
+        {QueryType::kPow, 2, 2, 4},       {QueryType::kPow, 2, 3, 3},
+        {QueryType::kPow, 2, 4, 6},       {QueryType::kPow, 2, 5, 7},
+        {QueryType::kPow, 2, 6, 5},       {QueryType::kPow, 2, 7, 1},
     };
 
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
@@ -180,64 +138,98 @@ TEST_CASE("LogBaseGaloisField") {
     // 2x + 1 -> 13
     // 2x + 2 -> 14
     std::vector<Test<int64_t>> tests = {
-      {QueryType::kMultiply, 0, 0, 0},
-      {QueryType::kMultiply, 0, 1, 0},
-      {QueryType::kMultiply, 0, 2, 0},
-      {QueryType::kMultiply, 0, 7, 0},
-      {QueryType::kMultiply, 0, 7, 0},
-      {QueryType::kMultiply, 0, 8, 0},
-      {QueryType::kMultiply, 0, 12, 0},
-      {QueryType::kMultiply, 0, 13, 0},
-      {QueryType::kMultiply, 0, 14, 0},
+        {QueryType::kMultiply, 0, 0, 0},
+        {QueryType::kMultiply, 0, 1, 0},
+        {QueryType::kMultiply, 0, 2, 0},
+        {QueryType::kMultiply, 0, 7, 0},
+        {QueryType::kMultiply, 0, 7, 0},
+        {QueryType::kMultiply, 0, 8, 0},
+        {QueryType::kMultiply, 0, 12, 0},
+        {QueryType::kMultiply, 0, 13, 0},
+        {QueryType::kMultiply, 0, 14, 0},
 
-      {QueryType::kMultiply, 1, 0, 0},
-      {QueryType::kMultiply, 1, 1, 1},
-      {QueryType::kMultiply, 1, 2, 2},
-      {QueryType::kMultiply, 1, 6, 6},
-      {QueryType::kMultiply, 1, 7, 7},
-      {QueryType::kMultiply, 1, 8, 8},
-      {QueryType::kMultiply, 1, 12, 12},
-      {QueryType::kMultiply, 1, 13, 13},
-      {QueryType::kMultiply, 1, 14, 14},
+        {QueryType::kMultiply, 1, 0, 0},
+        {QueryType::kMultiply, 1, 1, 1},
+        {QueryType::kMultiply, 1, 2, 2},
+        {QueryType::kMultiply, 1, 6, 6},
+        {QueryType::kMultiply, 1, 7, 7},
+        {QueryType::kMultiply, 1, 8, 8},
+        {QueryType::kMultiply, 1, 12, 12},
+        {QueryType::kMultiply, 1, 13, 13},
+        {QueryType::kMultiply, 1, 14, 14},
 
-      {QueryType::kMultiply, 2, 0, 0},
-      {QueryType::kMultiply, 2, 1, 2},
-      {QueryType::kMultiply, 2, 2, 1},
-      {QueryType::kMultiply, 2, 6, 12},
-      {QueryType::kMultiply, 2, 7, 14},
-      {QueryType::kMultiply, 2, 8, 13},
-      {QueryType::kMultiply, 2, 12, 6},
-      {QueryType::kMultiply, 2, 13, 8},
-      {QueryType::kMultiply, 2, 14, 7},
+        {QueryType::kMultiply, 2, 0, 0},
+        {QueryType::kMultiply, 2, 1, 2},
+        {QueryType::kMultiply, 2, 2, 1},
+        {QueryType::kMultiply, 2, 6, 12},
+        {QueryType::kMultiply, 2, 7, 14},
+        {QueryType::kMultiply, 2, 8, 13},
+        {QueryType::kMultiply, 2, 12, 6},
+        {QueryType::kMultiply, 2, 13, 8},
+        {QueryType::kMultiply, 2, 14, 7},
 
-      {QueryType::kMultiply, 6, 0, 0},
-      {QueryType::kMultiply, 6, 1, 6},
-      {QueryType::kMultiply, 6, 2, 12},
-      // x * x = x + 1
-      {QueryType::kMultiply, 6, 6, 7},
-      // x * (x + 1) = x^2 + x = 2x + 1
-      {QueryType::kMultiply, 6, 7, 13},
-      // x * (x + 2) = x^2 + 2x = 1
-      {QueryType::kMultiply, 6, 8, 1},
-      // x * (2x) = 2x^2 = 2x + 2
-      {QueryType::kMultiply, 6, 12, 14},
-      // x * (2x + 1) = 2x + 2 + x = 2
-      {QueryType::kMultiply, 6, 13, 2},
-      // x * (2x + 2) = 2x + 2 + 2x = x + 2
-      {QueryType::kMultiply, 6, 14, 8},
+        {QueryType::kMultiply, 6, 0, 0},
+        {QueryType::kMultiply, 6, 1, 6},
+        {QueryType::kMultiply, 6, 2, 12},
+        // x * x = x + 1
+        {QueryType::kMultiply, 6, 6, 7},
+        // x * (x + 1) = x^2 + x = 2x + 1
+        {QueryType::kMultiply, 6, 7, 13},
+        // x * (x + 2) = x^2 + 2x = 1
+        {QueryType::kMultiply, 6, 8, 1},
+        // x * (2x) = 2x^2 = 2x + 2
+        {QueryType::kMultiply, 6, 12, 14},
+        // x * (2x + 1) = 2x + 2 + x = 2
+        {QueryType::kMultiply, 6, 13, 2},
+        // x * (2x + 2) = 2x + 2 + 2x = x + 2
+        {QueryType::kMultiply, 6, 14, 8},
 
-      {QueryType::kAdd, 2, 0, 2},
-      {QueryType::kAdd, 6, 1, 7},
-      {QueryType::kAdd, 8, 2, 7},
-      {QueryType::kAdd, 13, 6, 1},
-      {QueryType::kAdd, 14, 7, 0},
-      {QueryType::kAdd, 6, 8, 14},
-      {QueryType::kAdd, 2, 12, 14},
-      {QueryType::kAdd, 6, 13, 1},
-      {QueryType::kAdd, 1, 14, 12},
+        {QueryType::kAdd, 2, 0, 2},
+        {QueryType::kAdd, 6, 1, 7},
+        {QueryType::kAdd, 8, 2, 7},
+        {QueryType::kAdd, 13, 6, 1},
+        {QueryType::kAdd, 14, 7, 0},
+        {QueryType::kAdd, 6, 8, 14},
+        {QueryType::kAdd, 2, 12, 14},
+        {QueryType::kAdd, 6, 13, 1},
+        {QueryType::kAdd, 1, 14, 12},
     };
     // x^2 = x + 1
     using GaloisField = galois_field::LogBasedField<3, 2, {2, 2, 1}>;
+
+    RunTests<GaloisField>(tests);
+  }
+}
+
+TEST_CASE("PrimeRing") {
+  SECTION("Z7") {
+    std::vector<Test<uint32_t>> tests = {
+        {QueryType::kAdd, 0, 0, 0},
+        {QueryType::kAdd, 3, 0, 3},
+        {QueryType::kAdd, 3, 4, 0},
+        {QueryType::kAdd, 5, 6, 4},
+
+        {QueryType::kNegative, 0, 0, 0},
+        {QueryType::kNegative, 1, 0, 6},
+        {QueryType::kNegative, 4, 0, 3},
+
+        {QueryType::kMultiply, 0, 6, 0},
+        {QueryType::kMultiply, 1, 6, 6},
+        {QueryType::kMultiply, 3, 5, 1},
+        {QueryType::kMultiply, 6, 6, 1},
+
+        {QueryType::kInverse, 1, 0, 1},
+        {QueryType::kInverse, 2, 0, 4},
+        {QueryType::kInverse, 3, 0, 5},
+        {QueryType::kInverse, 6, 0, 6},
+
+        {QueryType::kPow, 3, 0, 1},
+        {QueryType::kPow, 3, 1, 3},
+        {QueryType::kPow, 3, 2, 2},
+        {QueryType::kPow, 3, 6, 1},
+    };
+
+    using GaloisField = galois_field::PrimeRing<7>;
 
     RunTests<GaloisField>(tests);
   }
