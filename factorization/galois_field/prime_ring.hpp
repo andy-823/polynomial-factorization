@@ -28,29 +28,12 @@
 
 namespace factorization::galois_field {
 
-namespace detail {
-
-constexpr bool IsPrime(uint32_t value) {
-  if (value < 2) {
-    return false;
-  }
-  for (uint32_t divisor = 2; divisor <= value / divisor; ++divisor) {
-    if (value % divisor == 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace detail
 
 /*! \brief Field implementation of Z_p
  */
 template <uint32_t kFieldBase, std::integral Int = uint32_t,
           std::integral DoubleInt = uint64_t>
 class PrimeRing {
-  static_assert(detail::IsPrime(kFieldBase), "PrimeRing requires prime base");
-
  public:
   using Value = Int;
   using Coefficient = Int;

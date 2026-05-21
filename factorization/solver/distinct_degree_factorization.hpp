@@ -23,6 +23,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <stack>
 #include <utility>
@@ -93,12 +94,91 @@ int Degree(const Poly& value) {
 
 namespace ntl_like {
 
-template <concepts::Polynom Poly, StepsMode kMode = kSmallField>
+template <concepts::Polynom Poly>
+int Degree(const Poly& value) {
+  return value.IsZero() ? 0 : static_cast<int>(value.Size()) - 1;
+}
+
+enum Mode { kExactNtl, kSmallField };
+
+template <concepts::Polynom Poly, Mode kMode = kSmallField>
 class DistinctDegreeFactorizer {
   using Element = typename Poly::Element;
   using Modulus = typename Poly::Modulus;
   static constexpr auto kFieldSize =
       utils::BinPow(Element::FieldBase(), Element::FieldPower());
+
+  // Each factor represents interval ((j - 1)l, jl].
+  class GcdBuffer {
+    constexpr static int kBufferSize = 1;
+
+   public:
+    GcdBuffer(int interval_size)
+        : interval_size_(interval_size) {
+    }
+
+    bool Empty() const {
+      return size_ == 0;
+    }
+
+    bool Full() const {
+      return size_ == kBufferSize;
+    }
+
+    void Add(int j, Poly factor) {
+      assert(!Full());
+      buf_[size_] = {j, std::move(factor)};
+      ++size_;
+    }
+
+    bool Proceed(Poly& poly, std::vector<Poly>& F, const Modulus& mod) {
+      if (Empty()) {
+        return false;
+      }
+      Poly product = buf_[0].second;
+      for (int i = 1; i < size_; ++i) {
+        product = std::move(product).Mul(buf_[i].second).Rem(mod);
+      }
+      product = std::move(product).Gcd(poly);
+      if (product.IsOne()) {
+        size_ = 0;
+        return false;
+      }
+
+      poly = std::move(poly).Div(product).MakeMonic();
+      bool changed = false;
+      int i = 0;
+      int j = buf_[0].first;
+      int min_degree = (j - 1) * interval_size_ + 1;
+      while (i < size_ - 1 && 2 * min_degree <= Degree(product)) {
+        Poly factor = buf_[i].second.Gcd(product);
+        if (!factor.IsOne()) {
+          F[j] = std::move(factor); 
+          product = std::move(product).Div(F[j]).MakeMonic();
+          changed = true;
+        }
+        ++i;
+        ++j;
+        min_degree += interval_size_;
+      }
+
+      if (!product.IsOne()) {
+        if (i != size_ - 1) {
+          j = (Degree(product) + interval_size_ - 1) / interval_size_;
+        }
+        F[j] = std::move(product);
+        changed = true;
+      }
+
+      size_ = 0;
+      return changed;
+    }
+
+   private:
+    int size_ = 0;
+    int interval_size_;
+    std::array<std::pair<int, Poly>, kBufferSize> buf_;
+  };
 
  public:
   explicit DistinctDegreeFactorizer(Poly poly)
@@ -124,7 +204,7 @@ class DistinctDegreeFactorizer {
   template <typename Observer>
   std::vector<DistinctDegreeFactor<Poly>> RunWithObserver(Observer&& observer) {
     observer("BuildModulus", true);
-    Modulus mod = poly_.BuildModulus(2 * poly_.Size());
+    auto mod = poly_.BuildModulus(2 * poly_.Size());
     observer("BuildModulus", false);
     observer("GenerateBabySteps", true);
     GenerateBabySteps(mod);
@@ -187,6 +267,7 @@ class DistinctDegreeFactorizer {
     std::vector<Poly> hh = h;
 
     Modulus mod = poly_.BuildModulus(2 * poly_.Size());
+    GcdBuffer buffer(l);
     for (int j = 1; j <= m; ++j) {
       Poly HH = H[j].Rem(mod);  // NOLINT(readability-identifier-naming)
       // I = (H_j - h_0) * ... * (H_j - h_{l-1})
@@ -194,20 +275,20 @@ class DistinctDegreeFactorizer {
       for (int i = 1; i < l; ++i) {
         I = std::move(I).Mul(HH.Sub(hh[i])).Rem(mod);
       }
-      F[j] = std::move(I).Gcd(poly_);
-      if (!F[j].IsOne()) {
-        poly_ = std::move(poly_).Div(F[j]).MakeMonic();
+      buffer.Add(j, std::move(I));
+      if (buffer.Full() && buffer.Proceed(poly_, F, mod)) {
+        if (!poly_.IsOne() && Degree(poly_) >= 2 * j * l) {
+          mod = poly_.BuildModulus(2 * poly_.Size());
+          for (int i = 1; i <= l; ++i) {
+            hh[i] = std::move(hh[i]).Rem(mod);
+          }
+        }
       }
       if (Degree(poly_) < 2 * j * l) {
         break;
       }
-      if (!F[j].IsOne()) {
-        mod = poly_.BuildModulus(2 * poly_.Size());
-        for (int i = 1; i <= l; ++i) {
-          hh[i] = std::move(hh[i]).Rem(mod);
-        }
-      }
     }
+    buffer.Proceed(poly_, F, mod);
     if (!poly_.IsOne()) {
       const int d = Degree(poly_);
       result_.emplace_back(std::move(poly_), d);

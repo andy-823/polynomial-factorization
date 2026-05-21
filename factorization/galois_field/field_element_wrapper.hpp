@@ -180,7 +180,7 @@ class FieldElementWrapper {
     return result;
   }
 
-  static FieldElementWrapper Construct(Value value) {
+  constexpr static FieldElementWrapper Construct(Value value) {
     FieldElementWrapper result;
     result.value_ = value;
     return result;

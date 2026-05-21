@@ -1,24 +1,11 @@
-// MIT License
+// SPDX-License-Identifier: LGPL-2.1-or-later
 //
-// Copyright (c) 2026 Andrei Ishutin
+// Modifications Copyright (c) 2026 Andrei Ishutin
 //
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// Portions of the Half-GCD/GCD implementation are adapted from NTL's ZZ_pEX
+// implementation. NTL is written and maintained by Victor Shoup and distributed
+// under the GNU Lesser General Public License version 2.1 or later:
+//   https://libntl.org
 
 #pragma once
 
@@ -206,6 +193,14 @@ template <concepts::GaloisFieldElement Elem>
 struct NttEngine {
   static_assert(Elem::FieldPower() == 1, "NttEngine requires prime field");
 
+  // The Half-GCD routines in this engine follow the structure of NTL's ZZ_pEX
+  // HalfGCD/GCD implementation, adapted to this polynomial representation.
+  constexpr static size_t kHalfGCDThreshold = 512;
+
+  struct HalfGCDMatrix {
+    std::vector<Elem> data[2][2];
+  };
+
   struct Modulus {
     std::vector<Elem> polynomial;
     std::vector<Elem> reversed_inverse;
@@ -337,7 +332,8 @@ struct NttEngine {
 
   [[nodiscard]]
   static std::vector<Elem> Gcd(std::vector<Elem> a, std::vector<Elem> b) {
-    return PlainGCD(std::move(a), std::move(b));
+    return HalfGCDImpl(std::move(a), std::move(b));
+    // return PlainGCD(std::move(a), std::move(b));
   }
 
  private:
@@ -525,6 +521,255 @@ struct NttEngine {
       result.pop_back();
     }
     return result;
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> Add(std::vector<Elem> a,
+                               const std::vector<Elem>& b) {
+    if (a.size() < b.size()) {
+      a.resize(b.size(), Elem::Zero());
+    }
+    for (size_t i = 0; i < b.size(); ++i) {
+      a[i] += b[i];
+    }
+    return Trim(std::move(a));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> HalfGCDImpl(std::vector<Elem> a,
+                                       std::vector<Elem> b) {
+    if (a.size() == b.size()) {
+      if (a.empty()) {
+        return {};
+      }
+      b = Rem(std::move(b), a);
+    } else if (a.size() < b.size()) {
+      a.swap(b);
+    }
+
+    while (a.size() >= kHalfGCDThreshold && !b.empty()) {
+      HalfGCDReduce(a, b);
+      if (!b.empty()) {
+        a = Rem(std::move(a), b);
+        a.swap(b);
+      }
+    }
+    return PlainGCD(std::move(a), std::move(b));
+  }
+
+  static void HalfGCDReduce(std::vector<Elem>& u, std::vector<Elem>& v) {
+    const size_t d_red = u.size() / 2;
+    if (v.empty() || v.size() <= u.size() - d_red) {
+      return;
+    }
+
+    const size_t du = u.size() - 1;
+    size_t d1 = (d_red + 1) / 2;
+    d1 = std::max<size_t>(d1, 1);
+    if (d1 >= d_red) {
+      d1 = d_red - 1;
+    }
+
+    HalfGCDMatrix m1;
+    HalfGCD(m1, u, v, d1);
+    ApplyMatrix(u, v, m1);
+
+    const long d2 =
+        Degree(v) - static_cast<long>(du) + static_cast<long>(d_red);
+    if (v.empty() || d2 <= 0) {
+      return;
+    }
+
+    auto [quotient, remainder] = DivRem(u, v);
+    u = std::move(remainder);
+    u.swap(v);
+
+    HalfGCD(m1, u, v, static_cast<size_t>(d2));
+    ApplyMatrix(u, v, m1);
+  }
+
+  static void HalfGCD(HalfGCDMatrix& result, const std::vector<Elem>& u,
+                      const std::vector<Elem>& v, size_t d_red) {
+    if (v.empty() || v.size() <= u.size() - d_red) {
+      SetIdentity(result);
+      return;
+    }
+
+    const long shift = Degree(u) - 2 * static_cast<long>(d_red) + 2;
+    auto u1 = RightShift(u, shift > 0 ? static_cast<size_t>(shift) : 0);
+    auto v1 = RightShift(v, shift > 0 ? static_cast<size_t>(shift) : 0);
+
+    if (d_red <= kHalfGCDThreshold) {
+      IterHalfGCD(result, u1, v1, d_red);
+      return;
+    }
+
+    size_t d1 = (d_red + 1) / 2;
+    d1 = std::max<size_t>(d1, 1);
+    if (d1 >= d_red) {
+      d1 = d_red - 1;
+    }
+
+    HalfGCDMatrix m1;
+    HalfGCD(m1, u1, v1, d1);
+    ApplyMatrix(u1, v1, m1);
+
+    const long d2 = Degree(v1) - Degree(u) + shift + static_cast<long>(d_red);
+    if (v1.empty() || d2 <= 0) {
+      result = std::move(m1);
+      return;
+    }
+
+    auto [quotient, remainder] = DivRem(u1, v1);
+    u1 = std::move(remainder);
+    u1.swap(v1);
+
+    HalfGCDMatrix m2;
+    HalfGCD(m2, u1, v1, static_cast<size_t>(d2));
+    UpdateAfterDivision(m1, quotient);
+    result = MulMatrix(std::move(m2), std::move(m1));
+  }
+
+  static void IterHalfGCD(HalfGCDMatrix& result, std::vector<Elem>& u,
+                          std::vector<Elem>& v, size_t d_red) {
+    SetIdentity(result);
+    const size_t goal_size = u.size() - d_red;
+    if (v.size() <= goal_size) {
+      return;
+    }
+
+    while (v.size() > goal_size) {
+      auto [quotient, remainder] = DivRem(u, v);
+      u = std::move(remainder);
+      u.swap(v);
+      UpdateAfterDivision(result, quotient);
+    }
+  }
+
+  static void SetIdentity(HalfGCDMatrix& matrix) {
+    matrix.data[0][0] = {Elem::One()};
+    matrix.data[0][1] = {};
+    matrix.data[1][0] = {};
+    matrix.data[1][1] = {Elem::One()};
+  }
+
+  static void ApplyMatrix(std::vector<Elem>& u, std::vector<Elem>& v,
+                          const HalfGCDMatrix& matrix) {
+    auto new_u = AddProducts(matrix.data[0][0], u, matrix.data[0][1], v);
+    auto new_v = AddProducts(matrix.data[1][0], u, matrix.data[1][1], v);
+    u = std::move(new_u);
+    v = std::move(new_v);
+  }
+
+  [[nodiscard]]
+  static HalfGCDMatrix MulMatrix(HalfGCDMatrix lhs, HalfGCDMatrix rhs) {
+    return {{
+        {AddProducts(lhs.data[0][0], rhs.data[0][0], lhs.data[0][1],
+                     rhs.data[1][0]),
+         AddProducts(lhs.data[0][0], rhs.data[0][1], lhs.data[0][1],
+                     rhs.data[1][1])},
+        {AddProducts(lhs.data[1][0], rhs.data[0][0], lhs.data[1][1],
+                     rhs.data[1][0]),
+         AddProducts(lhs.data[1][0], rhs.data[0][1], lhs.data[1][1],
+                     rhs.data[1][1])},
+    }};
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> MulTerm(const std::vector<Elem>& lhs,
+                                   const std::vector<Elem>& rhs) {
+    if (lhs.empty() || rhs.empty()) {
+      return {};
+    }
+    if (lhs.size() == 1 && lhs[0] == Elem::One()) {
+      return rhs;
+    }
+    if (rhs.size() == 1 && rhs[0] == Elem::One()) {
+      return lhs;
+    }
+    return Mul(lhs, rhs);
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> AddProducts(const std::vector<Elem>& a,
+                                       const std::vector<Elem>& b,
+                                       const std::vector<Elem>& c,
+                                       const std::vector<Elem>& d) {
+    auto first = MulTerm(a, b);
+    if (first.empty()) {
+      return MulTerm(c, d);
+    }
+    return Add(std::move(first), MulTerm(c, d));
+  }
+
+  static void UpdateAfterDivision(HalfGCDMatrix& matrix,
+                                  const std::vector<Elem>& quotient) {
+    auto top_left = std::move(matrix.data[1][0]);
+    auto bottom_left =
+        Sub(std::move(matrix.data[0][0]), MulByQuotient(quotient, top_left));
+    matrix.data[0][0] = std::move(top_left);
+    matrix.data[1][0] = std::move(bottom_left);
+
+    auto top_right = std::move(matrix.data[1][1]);
+    auto bottom_right =
+        Sub(std::move(matrix.data[0][1]), MulByQuotient(quotient, top_right));
+    matrix.data[0][1] = std::move(top_right);
+    matrix.data[1][1] = std::move(bottom_right);
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> MulByQuotient(const std::vector<Elem>& quotient,
+                                         const std::vector<Elem>& value) {
+    if (quotient.size() > 4) {
+      return MulTerm(quotient, value);
+    }
+    if (quotient.empty() || value.empty()) {
+      return {};
+    }
+    if (quotient.size() == 1) {
+      if (quotient[0] == Elem::Zero()) {
+        return {};
+      }
+      if (quotient[0] == Elem::One()) {
+        return value;
+      }
+      std::vector<Elem> result(value);
+      for (auto& coeff : result) {
+        coeff *= quotient[0];
+      }
+      return Trim(std::move(result));
+    }
+
+    std::vector<Elem> result(value.size() + quotient.size() - 1, Elem::Zero());
+    for (size_t i = 0; i < quotient.size(); ++i) {
+      if (quotient[i] == Elem::Zero()) [[unlikely]] {
+        continue;
+      }
+      for (size_t j = 0; j < value.size(); ++j) {
+        if (value[j] == Elem::Zero()) [[unlikely]] {
+          continue;
+        }
+        result[i + j] += quotient[i] * value[j];
+      }
+    }
+    return Trim(std::move(result));
+  }
+
+  [[nodiscard]]
+  static std::vector<Elem> RightShift(const std::vector<Elem>& a,
+                                      size_t shift) {
+    if (shift >= a.size()) {
+      return {};
+    }
+    return Trim(std::vector<Elem>(a.begin() + shift, a.end()));
+  }
+
+  [[nodiscard]]
+  static long Degree(const std::vector<Elem>& a) {
+    if (a.empty()) {
+      return -1;
+    }
+    return static_cast<long>(a.size() - 1);
   }
 };
 

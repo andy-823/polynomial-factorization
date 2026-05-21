@@ -191,6 +191,109 @@ TEST_CASE("NaivePolynomial") {
   }
 }
 
+template <typename Duration, typename Func>
+typename Duration::rep Measure(Func&& func) {
+  using Timer = std::chrono::steady_clock;
+
+  const auto start = Timer::now();
+  func();
+  const auto finish = Timer::now();
+  return std::chrono::duration_cast<Duration>(finish - start).count();
+}
+
+template <concepts::Polynom First, concepts::Polynom Second, int kGcdDeg,
+          int kPolyDeg, typename RandomGen>
+void CompareGcdSpeed(RandomGen& random_gen, const char* label1,
+                     const char* label2) {
+  using Duration = std::chrono::milliseconds;
+
+  auto common = GenPoly<First, kGcdDeg, kFixed>(random_gen);
+  auto tail1 = GenPoly<First, kPolyDeg, kFixed>(random_gen);
+  auto tail2 = GenPoly<First, kPolyDeg, kFixed>(random_gen);
+  auto first1 = common.Mul(tail1);
+  auto second1 = common.Mul(tail2);
+
+  Second first2(first1.Get());
+  Second second2(second1.Get());
+
+  First res1;
+  const auto time1 = Measure<Duration>([&] {
+    res1 = first1.Gcd(second1).MakeMonic();
+  });
+  Second res2;
+  const auto time2 = Measure<Duration>([&] {
+    res2 = first2.Gcd(second2).MakeMonic();
+  });
+
+  std::cout << label1 << ": " << time1 << " ms\n";
+  std::cout << label2 << ": " << time2 << " ms\n";
+
+  REQUIRE(res1.Get() == res2.Get());
+}
+
+template <concepts::Polynom First, concepts::Polynom Second, size_t kSize,
+          typename RandomGen>
+void CompareMulSpeed(RandomGen& random_gen, const char* label1,
+                     const char* label2) {
+  using Duration = std::chrono::microseconds;
+
+  auto first1 = GenPoly<First, kSize, kFixed>(random_gen);
+  auto second1 = GenPoly<First, kSize, kFixed>(random_gen);
+  Second first2(first1.Get());
+  Second second2(second1.Get());
+
+  First result1;
+  const auto time1 = Measure<Duration>([&] {
+    result1 = first1.Mul(second1);
+  });
+
+  Second result2;
+  const auto time2 = Measure<Duration>([&] {
+    result2 = first2.Mul(second2);
+  });
+
+  std::cout << label1 << ": " << time1 << " us\n";
+  std::cout << label2 << ": " << time2 << " us\n";
+  REQUIRE(result2.Get() == result1.Get());
+}
+
+template <concepts::Polynom Poly, size_t kSize, typename RandomGen>
+void RunMulSpeed(RandomGen& random_gen, const char* label) {
+  auto first = GenPoly<Poly, kSize, kFixed>(random_gen);
+  auto second = GenPoly<Poly, kSize, kFixed>(random_gen);
+
+  const auto time = Measure<std::chrono::microseconds>([&] {
+    (void)first.Mul(second);
+  });
+
+  std::cout << label << ": " << time << " us\n";
+}
+
+template <concepts::Polynom Poly, size_t kValueSize, size_t kDivSize,
+          typename RandomGen>
+void RunRemSpeed(RandomGen& random_gen, const char* label) {
+  using Duration = std::chrono::microseconds;
+
+  const auto value = GenPoly<Poly, kValueSize, kFixed>(random_gen);
+  const auto divisor = GenPoly<Poly, kDivSize, kFixed>(random_gen).MakeMonic();
+  const auto modulus = divisor.BuildModulus(value.Size());
+
+  Poly plain_rem;
+  const auto plain_time = Measure<Duration>([&] {
+    plain_rem = value.Rem(divisor);
+  });
+
+  Poly precomputed_rem;
+  const auto precomputed_time = Measure<Duration>([&] {
+    precomputed_rem = value.Rem(modulus);
+  });
+
+  std::cout << label << "\n";
+  std::cout << "Rem without precompute: " << plain_time << " us\n";
+  std::cout << "Rem with precompute: " << precomputed_time << " us\n";
+  REQUIRE(precomputed_rem == plain_rem);
+}
+
 TEST_CASE("GenericPolynomial") {
   std::mt19937 random_gen;
 
@@ -250,147 +353,67 @@ TEST_CASE("GenericPolynomial") {
     }
   }
 
+  SECTION("Karatsuba mul speed") {
+    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NaivePoly = polynomial::NaivePolynomial<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
+    using KaratsubaPoly = polynomial::GenericPolynomial<Element, Engine>;
+
+    CompareMulSpeed<NaivePoly, KaratsubaPoly, 100'000>(
+        random_gen, "Naive mul", "NTT mul");
+  }
+
   SECTION("NTT mul speed") {
     using GaloisField = galois_field::PrimeRing<17>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using KaratsubaEngine = polynomial::KaratsubaEngine<Element>;
+    using KaraEngine = polynomial::KaratsubaEngine<Element>;
     using NttEngine = polynomial::NttEngine<Element>;
-    using KaratsubaPoly =
-        polynomial::GenericPolynomial<Element, KaratsubaEngine>;
+    using KaratsubaPoly = polynomial::GenericPolynomial<Element, KaraEngine>;
     using NttPoly = polynomial::GenericPolynomial<Element, NttEngine>;
-    using Timer = std::chrono::steady_clock;
-    using Duration = std::chrono::microseconds;
 
-    auto get_duration_count = [](auto time) {
-      return std::chrono::duration_cast<Duration>(time).count();
-    };
+    CompareMulSpeed<KaratsubaPoly, NttPoly, 1'000'000>(
+        random_gen, "Karatsuba degree 1m", "NTT degree 1m");
+  }
 
-    auto first_karatsuba =
-        GenPoly<KaratsubaPoly, 1'000'000, kFixed>(random_gen);
-    auto second_karatsuba =
-        GenPoly<KaratsubaPoly, 1'000'000, kFixed>(random_gen);
-    NttPoly first_ntt(first_karatsuba.Get());
-    NttPoly second_ntt(second_karatsuba.Get());
+  SECTION("NTT raw speed") {
+    using GaloisField = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NttEngine = polynomial::NttEngine<Element>;
+    using NttPoly = polynomial::GenericPolynomial<Element, NttEngine>;
 
-    const auto start_karatsuba = Timer::now();
-    const auto karatsuba_result = first_karatsuba.Mul(second_karatsuba);
-    const auto end_karatsuba = Timer::now();
-
-    const auto start_ntt = Timer::now();
-    const auto ntt_result = first_ntt.Mul(second_ntt);
-    const auto end_ntt = Timer::now();
-
-    std::cout << "Karatsuba PrimeRing<17> degree 1m: "
-              << get_duration_count(end_karatsuba - start_karatsuba) << " us\n";
-    std::cout << "NTT PrimeRing<17> degree 1m: "
-              << get_duration_count(end_ntt - start_ntt) << " us\n";
-    REQUIRE(ntt_result.Get() == karatsuba_result.Get());
+    RunMulSpeed<NttPoly, 16'384>(random_gen, "NTT ntt_size 32768");
   }
 
   SECTION("NTT rem speed") {
     using GaloisField = galois_field::PrimeRing<17>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NttPoly =
+        polynomial::GenericPolynomial<Element, polynomial::NttEngine<Element>>;
+
+    RunRemSpeed<NttPoly, 1'000'000, 500'000>(random_gen, "NTT Rem 1m");
+  }
+
+  SECTION("Karatuba GCD speed") {
+    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NaivePoly = polynomial::NaivePolynomial<Element>;
+    using Engine = polynomial::KaratsubaEngine<Element>;
+    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
+
+    CompareGcdSpeed<NaivePoly, GenericPoly, 2'000, 20'000>(
+        random_gen, "Naive GCD", "Karatsuba GCD");
+  }
+
+  SECTION("NTT GCD speed") {
+    using GaloisField = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Engine = polynomial::NttEngine<Element>;
-    using Poly = polynomial::GenericPolynomial<Element, Engine>;
-    using Timer = std::chrono::steady_clock;
-    using Duration = std::chrono::microseconds;
-
-    auto get_duration_count = [](auto time) {
-      return std::chrono::duration_cast<Duration>(time).count();
-    };
-
-    const auto value = GenPoly<Poly, 1'000'000, kFixed>(random_gen);
-    const auto divisor = GenPoly<Poly, 500'000, kFixed>(random_gen).MakeMonic();
-    const auto modulus = divisor.BuildModulus(value.Size());
-
-    const auto start_plain = Timer::now();
-    const auto plain_rem = value.Rem(divisor);
-    const auto end_plain = Timer::now();
-
-    const auto start_precomputed = Timer::now();
-    const auto precomputed_rem = value.Rem(modulus);
-    const auto end_precomputed = Timer::now();
-
-    std::cout << "NTT Rem without precompute: "
-              << get_duration_count(end_plain - start_plain) << " us\n";
-    std::cout << "NTT Rem with precompute: "
-              << get_duration_count(end_precomputed - start_precomputed)
-              << " us\n";
-    REQUIRE(precomputed_rem == plain_rem);
-  }
-
-  SECTION("Mul speed") {
-    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
-    using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::KaratsubaEngine<Element>;
-    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
-    using Timer = std::chrono::steady_clock;
-    using Duration = std::chrono::milliseconds;
+    using NttPoly = polynomial::GenericPolynomial<Element, Engine>;
 
-    auto get_duration_count = [](auto time) {
-      return std::chrono::duration_cast<Duration>(time).count();
-    };
-
-    auto first_naive = GenPoly<NaivePoly, 100'000, kFixed>(random_gen);
-    auto second_naive = GenPoly<NaivePoly, 100'000, kFixed>(random_gen);
-
-    GenericPoly first_generic(first_naive.Get());
-    GenericPoly second_generic(second_naive.Get());
-
-    auto start_naive = Timer::now();
-    auto res_naive = first_naive.Mul(second_naive);
-    auto end_naive = Timer::now();
-
-    auto res_generic = first_generic.Mul(second_generic);
-    auto modulus = first_generic.BuildModulus(res_generic.Size());
-    auto start_generic = Timer::now();
-    REQUIRE(res_generic.Rem(modulus).IsZero());
-    auto end_generic = Timer::now();
-
-    std::cout << "Naive: " << get_duration_count(end_naive - start_naive)
-              << " ms\n";
-    std::cout << "Generic: " << get_duration_count(end_generic - start_generic)
-              << " ms\n";
-    REQUIRE(res_naive.Get() == res_generic.Get());
-    REQUIRE(end_naive - start_naive > 5 * (end_generic - start_generic));
-  }
-
-  SECTION("GCD speed") {
-    using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
-    using Element = galois_field::FieldElementWrapper<GaloisField>;
-    using NaivePoly = polynomial::NaivePolynomial<Element>;
-    using Engine = polynomial::KaratsubaEngine<Element>;
-    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
-    using Timer = std::chrono::steady_clock;
-    using Duration = std::chrono::milliseconds;
-
-    auto get_duration_count = [](auto time) {
-      return std::chrono::duration_cast<Duration>(time).count();
-    };
-
-    auto common = GenPoly<NaivePoly, 2'000, kFixed>(random_gen);
-    auto first_tail = GenPoly<NaivePoly, 20'000, kFixed>(random_gen);
-    auto second_tail = GenPoly<NaivePoly, 20'000, kFixed>(random_gen);
-    auto first_naive = common.Mul(first_tail);
-    auto second_naive = common.Mul(second_tail);
-
-    GenericPoly first_generic(first_naive.Get());
-    GenericPoly second_generic(second_naive.Get());
-
-    auto start_naive = Timer::now();
-    auto res_naive = first_naive.Gcd(second_naive);
-    auto end_naive = Timer::now();
-
-    auto start_generic = Timer::now();
-    auto res_generic = first_generic.Gcd(second_generic).MakeMonic();
-    auto end_generic = Timer::now();
-
-    std::cout << "Naive GCD speed: "
-              << get_duration_count(end_naive - start_naive) << " ms\n";
-    std::cout << "Generic GCD speed: "
-              << get_duration_count(end_generic - start_generic) << " ms\n";
-    REQUIRE(res_generic.Get() == res_naive.Get());
+    CompareGcdSpeed<NaivePoly, NttPoly, 2'000, 20'000>(random_gen, "Naive GCD",
+                                                       "NTT GCD");
   }
 }
 
@@ -398,16 +421,19 @@ template <concepts::Polynom Poly, size_t kMaxPolySize, size_t kMaxModSize,
           typename RandomGen>
 void RunCompModFrobeniusTest(RandomGen& random_gen) {
   using Element = typename Poly::Element;
+  constexpr auto kFieldBase = Element::FieldBase();
+  constexpr auto kFieldPower = Element::FieldPower();
+  constexpr auto kZero = Element::Zero();
+  constexpr auto kOne = Element::One();
 
-  constexpr size_t kFieldSize =
-      utils::BinPow(Element::FieldBase(), Element::FieldPower());
+  constexpr size_t kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
   constexpr size_t kTestsCount = 100;
 
   for (size_t test = 0; test < kTestsCount; ++test) {
     Poly mod = GenPoly<Poly, kMaxModSize, kFixed>(random_gen).MakeMonic();
 
     const auto modulus = mod.BuildModulus(2 * mod.Size() + kMaxPolySize);
-    const Poly x(std::vector<Element>{Element::Zero(), Element::One()});
+    const Poly x(std::vector<Element>{kZero, kOne});
     const Poly x_q = polynomial::BinPowMod(x, kFieldSize, modulus);
 
     const Poly poly = GenPoly<Poly, kMaxPolySize>(random_gen);
