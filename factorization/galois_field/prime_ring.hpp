@@ -114,12 +114,12 @@ class PrimeRing {
   }
 
   //! Returns field characteristic
-  constexpr static uint64_t FieldBase() {
+  constexpr static Value FieldBase() {
     return kFieldBase;
   }
 
   //! Returns field dimension
-  constexpr static uint64_t FieldPower() {
+  constexpr static uint32_t FieldPower() {
     return 1;
   }
 };

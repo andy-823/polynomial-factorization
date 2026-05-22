@@ -22,7 +22,9 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <iterator>
 
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
@@ -36,8 +38,8 @@ namespace factorization::galois_field {
 template <concepts::GaloisField Field>
 class FieldElementWrapper {
   using Value = typename Field::Value;
-  constexpr static uint32_t kFieldBase = Field::FieldBase();
-  constexpr static uint32_t kFieldPower = Field::FieldPower();
+  constexpr static auto kFieldBase = Field::FieldBase();
+  constexpr static size_t kFieldPower = Field::FieldPower();
 
  public:
   using Coefficient = typename Field::Coefficient;
@@ -54,7 +56,7 @@ class FieldElementWrapper {
 
       constexpr value_type operator*() const {
         std::array<Coefficient, kFieldPower> coeffs{};
-        uint32_t val = value;
+        uint64_t val = value;
         for (size_t i = 0; i < kFieldPower; ++i) {
           coeffs[i] = static_cast<Coefficient>(val % kFieldBase);
           val /= kFieldBase;
@@ -73,7 +75,7 @@ class FieldElementWrapper {
 
       constexpr bool operator==(const Iterator&) const = default;
 
-      uint32_t value;
+      uint64_t value;
     };
 
     constexpr Iterator begin() const {
@@ -155,12 +157,12 @@ class FieldElementWrapper {
   }
 
   [[nodiscard]]
-  constexpr static uint32_t FieldBase() {
+  constexpr static auto FieldBase() {
     return Field::FieldBase();
   }
 
   [[nodiscard]]
-  constexpr static uint32_t FieldPower() {
+  constexpr static auto FieldPower() {
     return Field::FieldPower();
   }
 
