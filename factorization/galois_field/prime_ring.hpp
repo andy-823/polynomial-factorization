@@ -31,7 +31,7 @@ namespace factorization::galois_field {
 
 /*! \brief Field implementation of Z_p
  */
-template <uint32_t kFieldBase, std::integral Int = uint32_t,
+template <uint64_t kFieldBase, std::integral Int = uint32_t,
           std::integral DoubleInt = uint64_t>
 class PrimeRing {
  public:
@@ -114,12 +114,12 @@ class PrimeRing {
   }
 
   //! Returns field characteristic
-  constexpr static uint32_t FieldBase() {
+  constexpr static uint64_t FieldBase() {
     return kFieldBase;
   }
 
   //! Returns field dimension
-  constexpr static uint32_t FieldPower() {
+  constexpr static uint64_t FieldPower() {
     return 1;
   }
 };

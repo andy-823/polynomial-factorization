@@ -22,8 +22,8 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
-#include <iostream>
 
 #include <factorization/concepts.hpp>
 
@@ -80,7 +80,7 @@ constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
   if (!c.IsOne()) {
     auto factors = SquareFreeFactorize(FieldBaseRoot(c));
     for (const auto& [factor, power] : factors) {
-      int factor_power = power * Polynom::Element::FieldBase();
+      auto factor_power = Polynom::Element::FieldBase() * power;
       result.emplace_back(factor, factor_power);
     }
   }

@@ -1,3 +1,2 @@
 add_executable(benchmark_ddf distinct_degree_factorization.cpp)
 target_link_libraries(benchmark_ddf PRIVATE factorization)
-target_link_libraries(benchmark_ddf PRIVATE Catch2::Catch2WithMain)

@@ -99,9 +99,7 @@ int Degree(const Poly& value) {
   return value.IsZero() ? 0 : static_cast<int>(value.Size()) - 1;
 }
 
-enum Mode { kExactNtl, kSmallField };
-
-template <concepts::Polynom Poly, Mode kMode = kSmallField>
+template <concepts::Polynom Poly, StepsMode kMode = kSmallField>
 class DistinctDegreeFactorizer {
   using Element = typename Poly::Element;
   using Modulus = typename Poly::Modulus;
@@ -113,7 +111,7 @@ class DistinctDegreeFactorizer {
     constexpr static int kBufferSize = 1;
 
    public:
-    GcdBuffer(int interval_size)
+    explicit GcdBuffer(int interval_size)
         : interval_size_(interval_size) {
     }
 

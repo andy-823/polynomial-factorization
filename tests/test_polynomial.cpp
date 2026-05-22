@@ -353,6 +353,20 @@ TEST_CASE("GenericPolynomial") {
     }
   }
 
+  SECTION("Big NTT") {
+    using GaloisField = galois_field::PrimeRing<2524775926340780033, uint64_t, __int128_t>;
+    using Element = galois_field::FieldElementWrapper<GaloisField>;
+    using NaivePoly = polynomial::NaivePolynomial<Element>;
+    using Engine = polynomial::NttEngine<Element>;
+    using GenericPoly = polynomial::GenericPolynomial<Element, Engine>;
+
+    constexpr int kTestsCount = 100;
+
+    for (int test = 0; test < kTestsCount; ++test) {
+      RunCompareTest<NaivePoly, GenericPoly, 700>(random_gen);
+    }
+  }
+
   SECTION("Karatsuba mul speed") {
     using GaloisField = galois_field::LogBasedField<2, 3, {1, 1, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
