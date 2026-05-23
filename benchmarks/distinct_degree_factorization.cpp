@@ -31,7 +31,7 @@ using namespace std::chrono_literals;  // NOLINT
 using Clock = std::chrono::steady_clock;
 using Duration = std::chrono::microseconds;
 
-constexpr static int kThreadCount = 1;
+constexpr static int kThreadCount = 5;
 
 struct SimParams {
   std::vector<int> points;
@@ -137,8 +137,8 @@ void Simulate(const char* label, std::ostream& out,
 
 int main() {
   SimParams params;
-  params.run_count = 1;
-  params.points = {1000};
+  params.run_count = 10;
+  params.points = {1000, 2000, 4000, 6000, 8000, 10'000};
 
   std::ostream& out = std::cout;
 
