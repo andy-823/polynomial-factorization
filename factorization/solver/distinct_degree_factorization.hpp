@@ -108,7 +108,7 @@ class DistinctDegreeFactorizer {
 
   // Each factor represents interval ((j - 1)l, jl].
   class GcdBuffer {
-    constexpr static int kBufferSize = 1;
+    constexpr static int kBufferSize = 4;
 
    public:
     explicit GcdBuffer(int interval_size)
