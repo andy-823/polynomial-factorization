@@ -124,7 +124,7 @@ class IntegerNtt {
 
   [[nodiscard]]
   static const std::vector<int>& BitSort(size_t ntt_size) {
-    static std::vector<int> rev;
+    thread_local static std::vector<int> rev;
     if (rev.size() == ntt_size) {
       return rev;
     }
