@@ -164,7 +164,17 @@ int main() {
 
   {
     // NOLINTNEXTLINE
-    using Z_p = galois_field::PrimeRing<100'003>;;
+    using Z_p = galois_field::PrimeRing<17>;
+    using Element = galois_field::FieldElementWrapper<Z_p>;
+    using Engine = polynomial::NttEngine<Element>;
+    using Poly = polynomial::GenericPolynomial<Element, Engine>;
+
+    Simulate<Poly>("Z_17", out, params);
+  }
+
+  {
+    // NOLINTNEXTLINE
+    using Z_p = galois_field::PrimeRing<100'003>;
     using Element = galois_field::FieldElementWrapper<Z_p>;
     using Engine = polynomial::NttEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;
