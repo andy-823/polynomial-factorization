@@ -94,11 +94,6 @@ int Degree(const Poly& value) {
 
 namespace ntl_like {
 
-template <concepts::Polynom Poly>
-int Degree(const Poly& value) {
-  return value.IsZero() ? 0 : static_cast<int>(value.Size()) - 1;
-}
-
 template <concepts::Polynom Poly, StepsMode kMode = kSmallField>
 class DistinctDegreeFactorizer {
   using Element = typename Poly::Element;
@@ -144,7 +139,6 @@ class DistinctDegreeFactorizer {
       }
 
       poly = std::move(poly).Div(product).MakeMonic();
-      bool changed = false;
       int i = 0;
       int j = buf_[0].first;
       int min_degree = (j - 1) * interval_size_ + 1;
@@ -153,7 +147,6 @@ class DistinctDegreeFactorizer {
         if (!factor.IsOne()) {
           F[j] = std::move(factor);
           product = std::move(product).Div(F[j]).MakeMonic();
-          changed = true;
         }
         ++i;
         ++j;
@@ -165,11 +158,10 @@ class DistinctDegreeFactorizer {
           j = (Degree(product) + interval_size_ - 1) / interval_size_;
         }
         F[j] = std::move(product);
-        changed = true;
       }
 
       size_ = 0;
-      return changed;
+      return true;
     }
 
    private:
@@ -568,10 +560,6 @@ class DistinctDegreeFactorizer {
       Node* result = pool_.top();
       pool_.pop();
       return result;
-    }
-
-    void RetireNode(Node* node) {
-      pool_.push(node);
     }
 
     void Merge(Node* left, Node* right, Node* root) {
