@@ -198,9 +198,9 @@ class NaivePolynomial : public PolynomialBase<Elem, NaivePolynomial<Elem>> {
 
     Element* a = data_.data();
     const Element* b = rhs.data_.data();
-    // will perform naive polinomial division
+    // will perform naive polynomial division
     // go from greatest power to lowest
-    // we have smth like this every step
+    // we have something like this at every step
     //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
     // minus
     //                           b[0] + ... + b[n - k]
@@ -235,9 +235,9 @@ class NaivePolynomial : public PolynomialBase<Elem, NaivePolynomial<Elem>> {
     const size_t quotient_size = n - m + 1;
     Element* a = data_.data();
     const Element* b = rhs.data_.data();
-    // will perform naive polinomial division
+    // will perform naive polynomial division
     // go from greatest power to lowest
-    // we have smth like this every step
+    // we have something like this at every step
     //   a[0] + ... + a[k - 1] + a[k] + ... + a[n]
     // minus
     //                           b[0] + ... + b[n - k]

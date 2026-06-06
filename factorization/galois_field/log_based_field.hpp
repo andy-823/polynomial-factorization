@@ -34,7 +34,7 @@ namespace factorization::galois_field {
  *
  *  @tparam kFieldBase Field characteristic
  *  @tparam kFieldPower Field power
- *  @tparam kFieldGenerator Primitive polynomial from lower power to greater
+ *  @tparam kFieldGenerator Primitive polynomial from lower degree to higher
  *  @tparam Int Type used inside, uint32_t by default
  *
  *  Operates over elements written in polynomial form.
@@ -43,7 +43,7 @@ namespace factorization::galois_field {
  *    - O(2^k) memory usage
  *    - O(2^k) construction time
  *  For other fields:
- *    - O((2p)^k) memoty usage
+ *    - O((2p)^k) memory usage
  *    - O(k(2p)^k) construction time
  *  p is kFieldBase
  *  k is kFieldPower
@@ -77,11 +77,11 @@ class LogBasedField {
     for (Int power = 0; power + 1 < kFieldSize; ++power) {
       log_to_poly_[power] = polynom;
       poly_to_log_[polynom] = power;
-      // Now we want to multiply polynom by alpha
+      // Now we want to multiply the polynomial by alpha
       // Consider
-      //   polynom = c * alpha^{k - 1} + p(alpha), deg(p(alpha)) < k - 1
+      //   polynomial = c * alpha^{k - 1} + p(alpha), deg(p(alpha)) < k - 1
       // Then
-      //   polynom * alpha = c * alpha^{k} + alpha * p(alpha)
+      //   polynomial * alpha = c * alpha^{k} + alpha * p(alpha)
       Int overflow = polynom / alpha;
       // Remove c * alpha^{k - 1} at the beginning
       // and multiply remaining part by alpha
@@ -223,7 +223,7 @@ class LogBasedField {
   std::array<Int, kElemsCount / 2> poly_to_log_{};
   // values in polynomial form are presented as
   //   a(x) = a_0 + a_1 x + ...
-  // usually x = kFieldBase is used to store a, but it make addition difficult
+  // usually x = kFieldBase is used to store a, but it makes addition difficult
   // here i use x = 2^kBitsPerSymbol, addition becomes like this
   //  (a_0 + b_0) + (a_1 + b_1) x + ...
   // Note: a_0 + b_0 MUST be less than x
@@ -234,7 +234,7 @@ class LogBasedField {
 };
 
 /** Specialization for base equal to 2.
- *  Addition can be replaced with XOR which much faster.
+ *  Addition can be replaced with XOR, which is much faster.
  */
 template <uint32_t kFieldPower,
           std::array<uint32_t, kFieldPower + 1> kFieldGenerator,

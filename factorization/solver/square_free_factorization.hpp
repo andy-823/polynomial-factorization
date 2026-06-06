@@ -29,7 +29,7 @@
 
 namespace factorization::sff {
 
-// assume polynom is
+// assume polynomial is
 //   f(x) = g(x)^p
 // this function returns such g(x) by given f(x)
 template <concepts::Polynom Polynom>
@@ -75,7 +75,7 @@ constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
     c = std::move(c).Div(factors);
     ++j;
   }
-  // that means polynom is p-th power
+  // that means polynomial is a p-th power
   if (!c.IsOne()) {
     auto factors = SquareFreeFactorize(FieldBaseRoot(c));
     for (const auto& [factor, power] : factors) {

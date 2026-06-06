@@ -312,7 +312,7 @@ class DistinctDegreeFactorizer {
         break;
       }
       // factor = Gcd(H_j - h_i, F_j)
-      // bu since deg F_j is low we use rem at first
+      // but since deg F_j is low we use rem first
       Poly factor = H[j].Sub(h[i]).Rem(mod).Gcd(F_j);
       if (!factor.IsOne()) {
         F_j = std::move(F_j).Div(factor).MakeMonic();
@@ -454,7 +454,7 @@ class DistinctDegreeFactorizer {
         break;
       }
       // factor = Gcd(H_j - h_i, F_j)
-      // bu since deg F_j is low we use rem at first
+      // but since deg F_j is low we use rem first
       Poly factor = H.Sub(h[i]).Rem(mod).Gcd(F);
       if (!factor.IsOne()) {
         F = std::move(F).Div(factor).MakeMonic();
@@ -519,7 +519,7 @@ class DistinctDegreeFactorizer {
       }
     }
 
-    // add leave
+    // add leaf
     void Add(int interval, Poly poly) {
       Node* node = GetNode();
       leaves_.push_back(node);
@@ -757,7 +757,7 @@ class DistinctDegreeFactorizer {
         break;
       }
       // factor = Gcd(H_j - h_i, F_j)
-      // bu since deg F_j is low we use rem at first
+      // but since deg F_j is low we use rem first
       Poly factor = H[j].Sub(h[i]).Rem(mod).Gcd(F_j);
       if (!factor.IsOne()) {
         F_j = std::move(F_j).Div(factor).MakeMonic();

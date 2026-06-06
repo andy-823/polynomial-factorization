@@ -61,7 +61,7 @@ class MultithreadRandomGen {
   std::mutex lock_;
 };
 
-// assume RandomGen support multithreading
+// assume RandomGen supports multithreading
 template <concepts::Polynom Poly, typename Solver, typename RandomGen>
 int64_t RunPoint(int size, int run_count, RandomGen& random_gen) {
   std::atomic<int64_t> result = 0;

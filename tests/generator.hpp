@@ -27,7 +27,7 @@ Element GenElement(RandomGen& gen) {
 }
 
 enum GenMode { kFixed, kRandom };
-// template because, maybe, different polynoms want different sizes
+// template because different polynomials may want different sizes
 template <typename Poly, size_t kMaxSize, GenMode kMode, typename RandomGen>
 size_t GenSize(RandomGen& gen) {
   if constexpr (kMode == kFixed) {

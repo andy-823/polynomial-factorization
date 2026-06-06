@@ -61,7 +61,7 @@ class Berlekamp {
   // return vector because of no repeating factors
   inline std::vector<Polynom> FactorizeImpl(Polynom polynom) const {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
-    // that means polynom is irreducible
+    // that means the polynomial is irreducible
     if (basis.size() == 1) {
       return {polynom};
     }
@@ -69,8 +69,8 @@ class Berlekamp {
     // but inside it can be everything - better to get it here
     const auto field_elements = Element::AllFieldElements();
     std::vector<Polynom> factors = {polynom};
-    // put outside of cycle to remove amount of dynamic allocations
-    // i understand that most of them are done inside polynoms arithmetic
+    // put outside the loop to reduce the number of dynamic allocations
+    // most allocations are still done inside polynomial arithmetic,
     // but if we can use less - why not?
     std::vector<Polynom> new_factors;
     new_factors.reserve(basis.size());
@@ -82,7 +82,7 @@ class Berlekamp {
       for (const auto& factor : factors) {
         for (const auto& c : field_elements) {
           Polynom new_factor = factor.Gcd(factorizing.Sub(c));
-          // new factor is non trivial
+          // new factor is nontrivial
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
           }
@@ -107,14 +107,14 @@ class Berlekamp {
       const Polynom& polynom) const {
     std::vector<Polynom> result;
     // since powering to q-th power is linear, it can be done with matrix
-    // we want not to power but to find specific polynomials
+    // we do not want to power here, but to find specific polynomials
     // this matrix has view (A - E)^T
     //   where yA = y^q
     auto matrix = BuildMatrix(polynom);
     // now we want to find basis of solutions Ax = 0
-    // at first we want to perform gauss elimination
+    // first we perform Gaussian elimination
     matrix = PerformGaussElimination(std::move(matrix));
-    // Idea i use here is the following
+    // The idea used here is the following
     // We have positions of free coefficients
     // Example:
     //   0 1 1 0
@@ -124,12 +124,13 @@ class Berlekamp {
     // Here we have main columns:
     //   row 0: column 1
     //   row 1: column 3
-    // Then i apply each free coefficient to one, other zero
-    // And retrieve necessary vector via matrix
+    // Then we set each free coefficient to one, the others to zero,
+    // and retrieve the corresponding vector via the matrix.
     // For example above:
     //   first free coefficient is one: we get [1, 0, 0, 0]
     //   second free coefficient is one: we get [0, -1, 1, 0]
-    // As free coefficient is at only one column we this equations
+    // Since a free coefficient appears in only one column, we get these
+    // equations.
     // We have equations containing only 2 values
     // Example for second
     //   x_0 = 0, here c_0 = 0
@@ -180,21 +181,21 @@ class Berlekamp {
         utils::BinPow(Element::FieldBase(), Element::FieldPower());
     size_t n = factorizing.Size() - 1;
     std::vector<std::vector<Element>> result(n, std::vector<Element>(n));
-    // At start we want to build matrix A, such that
+    // At the start we build matrix A such that
     //   y A = y^q (mod f)
-    // where y is polynom
+    // where y is a polynomial
     // so we want to fill its rows this way
     //   A_0     = x^{0 * q} (mod f)
     //   A_1     = x^{1 * q} (mod f)
     //   ...
     //   A_{n-1} = x^{(n - 1) * q} (mod f)
-    // here we have q is field size
+    // here q is the field size
     {
       // base is equal to x^q % f
       Polynom base;
       Polynom current(Element::One());
       {
-        // here we get that x, done a little weird
+        // here we construct x in a slightly unusual way
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
         base = Polynom(std::move(tmp)).Rem(factorizing);
@@ -225,7 +226,7 @@ class Berlekamp {
     size_t n = matrix.size();
     size_t row = 0;
     for (size_t column = 0; column < n; ++column) {
-      // at first we want to find row which differs from zero at column
+      // first we find a row with a nonzero value in this column
       size_t next_row = row;
       while (next_row < n && matrix[next_row][column] == Element::Zero()) {
         ++next_row;
@@ -251,7 +252,7 @@ class Berlekamp {
             matrix[other_row][i] -= matrix[row][i] * coefficient;
           }
         }
-        // now we can go to other row
+        // now we can move to the next row
         ++row;
       }
     }

@@ -30,7 +30,7 @@ namespace factorization::polynomial {
 
 /*! \brief Implementation of basic polynomial operations
  * Implementation of this operation is common for all polynomials
- * Follows invariant that is doesn't have leading zeros
+ * Follows the invariant that it doesn't have leading zeros
  */
 template <concepts::GaloisFieldElement Elem, typename Derived>
 class PolynomialBase {

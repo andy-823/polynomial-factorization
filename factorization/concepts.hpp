@@ -113,7 +113,7 @@ concept PolynomialEngine =
         Engine::Gcd(std::vector<Elem>{}, std::vector<Elem>{})
       } -> std::same_as<std::vector<Elem>>;
       // operations with some precomputations
-      // this will make massive calculation of view
+      // this makes massive calculations of the form
       //   a * b (mod f)
       // to cost significantly less computations
       {
@@ -135,7 +135,7 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value,
                            const typename Poly::Modulus& modulus,
                            size_t power) {
   // This requirement is needed since sometimes we need
-  // to perform arithmetic outside of polynom class
+  // to perform arithmetic outside of the polynomial class
   requires GaloisFieldElement<typename Poly::Element>;
 
   requires std::constructible_from<Poly, std::vector<typename Poly::Element>>;
@@ -160,8 +160,8 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value,
   { poly.Mul(value) } -> std::same_as<Poly>;
   { poly.Div(value) } -> std::same_as<Poly>;
 
-  // operations woth some precomputations
-  // power here is max divident size
+  // operations with some precomputations
+  // power here is the max dividend size
   { poly.BuildModulus(power) } -> std::same_as<typename Poly::Modulus>;
   { poly.Div(modulus) } -> std::same_as<Poly>;
   { poly.Rem(modulus) } -> std::same_as<Poly>;
@@ -170,7 +170,7 @@ concept Polynom = requires(const Poly& poly, typename Poly::Element value,
   //   a[0] + a[1] x + a[2] x^2 + ... + a[n] x^n
   // From lower power to higher
   { poly.Get() } -> std::same_as<std::vector<typename Poly::Element>>;
-  // return polynom power + 1 if polynom is nonzero
+  // return polynomial degree + 1 if the polynomial is nonzero
   // otherwise return zero
   { poly.Size() } -> std::integral;
   { poly.IsOne() } -> std::same_as<bool>;

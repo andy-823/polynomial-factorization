@@ -32,7 +32,7 @@ namespace factorization::polynomial {
 
 /*! \brief Polynomial adaptation for different multiplication algorithms
  *
- * Follows invariant that is doesn't have leading zeros
+ * Follows the invariant that it doesn't have leading zeros
  */
 template <concepts::GaloisFieldElement Elem,
           concepts::PolynomialEngine<Elem> Engine>
