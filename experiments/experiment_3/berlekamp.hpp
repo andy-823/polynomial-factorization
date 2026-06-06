@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -55,7 +55,6 @@ class BerlekampExperiment {
 
  private:
   inline std::map<Polynom, int> FactorizeImpl(Polynom polynom) {
-
     std::map<Polynom, int> result;
     while (!polynom.IsOne()) {
       Polynom derivative = polynom.Derivative();
@@ -70,7 +69,8 @@ class BerlekampExperiment {
       // gcd is already monic
       Polynom gcd = polynom.Gcd(derivative);
       // polynom / gcd has no repeating factors
-      for (const auto& factor : SquareFreeFactorize(std::move(polynom).Div(gcd))) {
+      for (const auto& factor :
+           SquareFreeFactorize(std::move(polynom).Div(gcd))) {
         ++result[factor];
       }
       polynom = std::move(gcd);
@@ -94,8 +94,7 @@ class BerlekampExperiment {
       //   Berlekamp algorithm works only with relatively small fields
       //   caring about overflow is meaningless
       //   if your field is so big use another algo
-      constexpr int64_t kPower = utils::BinPow(kFieldBase,
-                                               kFieldPower - 1);
+      constexpr int64_t kPower = utils::BinPow(kFieldBase, kFieldPower - 1);
       elements[i / kFieldBase] = elements[i].Pow(kPower);
     }
     elements.resize((elements.size() + kFieldBase - 1) / kFieldBase);
@@ -116,9 +115,12 @@ class BerlekampExperiment {
   inline std::vector<Polynom> SquareFreeFactorize(Polynom polynom) {
     size_t n = polynom.Size() - 1;
     std::vector<std::vector<Element>> matrix(n, std::vector<Element>(n));
+
     {
-      constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
-                                               Element::FieldPower());
+      constexpr static auto kFieldBase = Element::FieldBase();
+      constexpr static auto kFieldPower = Element::FieldPower();
+      constexpr static auto kFieldSize = utils::BinPow(kFieldBase, kFieldPower);
+
       Polynom base;
       Polynom current(Element::One());
       {
@@ -135,7 +137,7 @@ class BerlekampExperiment {
         current = std::move(current).Mul(base).Rem(polynom);
       }
     }
-    
+
     std::vector<Polynom> result;
 
     Polynom factorizing = polynom;
@@ -167,7 +169,8 @@ class BerlekampExperiment {
   // input is monic f(x) = f_1(x) ... f_k(x)
   // where f_1 ... f_k are irreducible
   // return vector because of no repeating factors
-  inline std::vector<Polynom> DistinctDegreeFactorize(Polynom polynom, size_t power) {
+  inline std::vector<Polynom> DistinctDegreeFactorize(Polynom polynom,
+                                                      size_t power) {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
     // that means polynom is irreducible
     if (basis.size() == 1) {
@@ -281,9 +284,10 @@ class BerlekampExperiment {
 
   // returns (A - E)^T
   // where A is equivalent to powering to q-th power
-  inline std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) {
-    constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
-                                             Element::FieldPower());
+  inline std::vector<std::vector<Element>> BuildMatrix(
+      const Polynom& factorizing) {
+    constexpr int kFieldSize =
+        utils::BinPow(Element::FieldBase(), Element::FieldPower());
     size_t n = factorizing.Size() - 1;
     std::vector<std::vector<Element>> result(n, std::vector<Element>(n));
     // At start we want to build matrix A, such that
@@ -327,8 +331,7 @@ class BerlekampExperiment {
   }
 
   inline std::vector<std::vector<Element>> PerformGaussElimination(
-    std::vector<std::vector<Element>> matrix) {
-
+      std::vector<std::vector<Element>> matrix) {
     size_t n = matrix.size();
     size_t row = 0;
     for (size_t column = 0; column < n; ++column) {

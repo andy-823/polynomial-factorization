@@ -26,7 +26,7 @@
 #include "factorization/concepts.hpp"
 #include "generator.hpp"
 
-using namespace factorization;  // NOLINT
+using namespace factorization;         // NOLINT
 using namespace std::chrono_literals;  // NOLINT
 using Clock = std::chrono::steady_clock;
 using Duration = std::chrono::microseconds;
@@ -101,16 +101,21 @@ void RunSingleSolver(const char* solver_label, std::ostream& out,
 }
 
 template <concepts::Polynom Poly, typename RandomGen = std::mt19937_64>
-void RunMultipleSolvers(std::ostream& out, const SimParams& params, const uint64_t seed = 0) {
-  using ExactNtl = ddf::ntl_like::DistinctDegreeFactorizer<Poly, ddf::kExactNtl>;
-  using ModifiedNtl = ddf::ntl_like::DistinctDegreeFactorizer<Poly, ddf::kSmallField>;
+void RunMultipleSolvers(std::ostream& out, const SimParams& params,
+                        const uint64_t seed = 0) {
+  // NOLINTBEGIN
+  using ExactNtl =
+      ddf::ntl_like::DistinctDegreeFactorizer<Poly, ddf::kExactNtl>;
+  using ModifiedNtl =
+      ddf::ntl_like::DistinctDegreeFactorizer<Poly, ddf::kSmallField>;
   using Lazy = ddf::own_lazy::DistinctDegreeFactorizer<Poly, ddf::kSmallField>;
   using Tree = ddf::own_tree::DistinctDegreeFactorizer<Poly, ddf::kSmallField>;
+  // NOLINTEND
 
   MultithreadRandomGen<RandomGen> random_gen;
 
   random_gen.seed(seed);
-  RunSingleSolver<Poly, ExactNtl>("exact_ntl", out, params,random_gen);
+  RunSingleSolver<Poly, ExactNtl>("exact_ntl", out, params, random_gen);
 
   random_gen.seed(seed);
   RunSingleSolver<Poly, ModifiedNtl>("modified_ntl", out, params, random_gen);
@@ -123,8 +128,8 @@ void RunMultipleSolvers(std::ostream& out, const SimParams& params, const uint64
 }
 
 template <concepts::Polynom Poly, typename RandomGen = std::mt19937_64>
-void Simulate(const char* label, std::ostream& out,
-              const SimParams& params, const uint64_t seed = 0) {
+void Simulate(const char* label, std::ostream& out, const SimParams& params,
+              const uint64_t seed = 0) {
   // print first line
   out << label << "\t";
   for (const auto& size : params.points) {

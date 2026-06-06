@@ -28,7 +28,6 @@
 
 namespace factorization::galois_field {
 
-
 /*! \brief Field implementation of Z_p
  */
 template <uint64_t kFieldBase, std::integral Int = uint32_t,

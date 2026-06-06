@@ -151,7 +151,7 @@ class DistinctDegreeFactorizer {
       while (i < size_ - 1 && 2 * min_degree <= Degree(product)) {
         Poly factor = buf_[i].second.Gcd(product);
         if (!factor.IsOne()) {
-          F[j] = std::move(factor); 
+          F[j] = std::move(factor);
           product = std::move(product).Div(F[j]).MakeMonic();
           changed = true;
         }

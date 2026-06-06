@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -48,8 +48,7 @@ namespace factorization::galois_field {
  *  p is kFieldBase
  *  k is kFieldPower
  */
-template <uint32_t kFieldBase,
-          uint32_t kFieldPower,
+template <uint32_t kFieldBase, uint32_t kFieldPower,
           std::array<uint32_t, kFieldPower + 1> kFieldGenerator,
           std::integral Int = uint32_t>
 class LogBasedField {
@@ -181,8 +180,8 @@ class LogBasedField {
     if (first == 0) {
       return 0;
     }
-    return log_to_poly_[kFieldSize - 1 -
-                        poly_to_log_[second] + poly_to_log_[first]];
+    return log_to_poly_[kFieldSize - 1 - poly_to_log_[second] +
+                        poly_to_log_[first]];
   }
 
   //! Returns field element that equal given**power
@@ -210,7 +209,7 @@ class LogBasedField {
     return kFieldBase;
   }
 
-  //! Returns field dimension  
+  //! Returns field dimension
   constexpr static uint32_t FieldPower() {
     return kFieldPower;
   }
@@ -260,9 +259,8 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
       log_to_poly_[power] = polynom;
       poly_to_log_[polynom] = power;
 
-      polynom = polynom >= alpha 
-                  ? Add((polynom - alpha) << 1, generator)
-                  : polynom << 1;
+      polynom = polynom >= alpha ? Add((polynom - alpha) << 1, generator)
+                                 : polynom << 1;
     }
     for (uint32_t i = 0; i < kFieldSize; ++i) {
       log_to_poly_[i + kFieldSize - 1] = log_to_poly_[i];
@@ -323,8 +321,8 @@ class LogBasedField<2, kFieldPower, kFieldGenerator, Int> {
     if (first == 0) {
       return 0;
     }
-    return log_to_poly_[kFieldSize - 1 -
-                        poly_to_log_[second] + poly_to_log_[first]];
+    return log_to_poly_[kFieldSize - 1 - poly_to_log_[second] +
+                        poly_to_log_[first]];
   }
 
   template <typename Power>

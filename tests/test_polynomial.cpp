@@ -354,6 +354,7 @@ TEST_CASE("GenericPolynomial") {
   }
 
   SECTION("Big NTT") {
+    // NOLINTNEXTLINE
     using GaloisField = galois_field::PrimeRing<2524775926340780033, uint64_t, __int128_t>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using NaivePoly = polynomial::NaivePolynomial<Element>;
@@ -374,8 +375,8 @@ TEST_CASE("GenericPolynomial") {
     using Engine = polynomial::KaratsubaEngine<Element>;
     using KaratsubaPoly = polynomial::GenericPolynomial<Element, Engine>;
 
-    CompareMulSpeed<NaivePoly, KaratsubaPoly, 100'000>(
-        random_gen, "Naive mul", "NTT mul");
+    CompareMulSpeed<NaivePoly, KaratsubaPoly, 100'000>(random_gen, "Naive mul",
+                                                       "NTT mul");
   }
 
   SECTION("NTT mul speed") {
@@ -489,8 +490,8 @@ TEST_CASE("CompMod") {
   }
 
   SECTION("GF_2^16") {
-    using GaloisField = galois_field::LogBasedField<
-        2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
+    // NOLINTNEXTLINE
+    using GaloisField = galois_field::LogBasedField<2, 16, {1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1}>;
     using Element = galois_field::FieldElementWrapper<GaloisField>;
     using Engine = polynomial::KaratsubaEngine<Element>;
     using Poly = polynomial::GenericPolynomial<Element, Engine>;

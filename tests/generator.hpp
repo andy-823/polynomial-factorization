@@ -1,5 +1,3 @@
-
-
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
 
@@ -30,8 +28,7 @@ Element GenElement(RandomGen& gen) {
 
 enum GenMode { kFixed, kRandom };
 // template because, maybe, different polynoms want different sizes
-template <typename Poly, size_t kMaxSize, GenMode kMode,
-          typename RandomGen>
+template <typename Poly, size_t kMaxSize, GenMode kMode, typename RandomGen>
 size_t GenSize(RandomGen& gen) {
   if constexpr (kMode == kFixed) {
     return kMaxSize;

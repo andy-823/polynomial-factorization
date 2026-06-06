@@ -204,29 +204,20 @@ TEST_CASE("LogBaseGaloisField") {
 TEST_CASE("PrimeRing") {
   SECTION("Z7") {
     std::vector<Test<uint32_t>> tests = {
-        {QueryType::kAdd, 0, 0, 0},
-        {QueryType::kAdd, 3, 0, 3},
-        {QueryType::kAdd, 3, 4, 0},
-        {QueryType::kAdd, 5, 6, 4},
+        {QueryType::kAdd, 0, 0, 0},      {QueryType::kAdd, 3, 0, 3},
+        {QueryType::kAdd, 3, 4, 0},      {QueryType::kAdd, 5, 6, 4},
 
-        {QueryType::kNegative, 0, 0, 0},
-        {QueryType::kNegative, 1, 0, 6},
+        {QueryType::kNegative, 0, 0, 0}, {QueryType::kNegative, 1, 0, 6},
         {QueryType::kNegative, 4, 0, 3},
 
-        {QueryType::kMultiply, 0, 6, 0},
-        {QueryType::kMultiply, 1, 6, 6},
-        {QueryType::kMultiply, 3, 5, 1},
-        {QueryType::kMultiply, 6, 6, 1},
+        {QueryType::kMultiply, 0, 6, 0}, {QueryType::kMultiply, 1, 6, 6},
+        {QueryType::kMultiply, 3, 5, 1}, {QueryType::kMultiply, 6, 6, 1},
 
-        {QueryType::kInverse, 1, 0, 1},
-        {QueryType::kInverse, 2, 0, 4},
-        {QueryType::kInverse, 3, 0, 5},
-        {QueryType::kInverse, 6, 0, 6},
+        {QueryType::kInverse, 1, 0, 1},  {QueryType::kInverse, 2, 0, 4},
+        {QueryType::kInverse, 3, 0, 5},  {QueryType::kInverse, 6, 0, 6},
 
-        {QueryType::kPow, 3, 0, 1},
-        {QueryType::kPow, 3, 1, 3},
-        {QueryType::kPow, 3, 2, 2},
-        {QueryType::kPow, 3, 6, 1},
+        {QueryType::kPow, 3, 0, 1},      {QueryType::kPow, 3, 1, 3},
+        {QueryType::kPow, 3, 2, 2},      {QueryType::kPow, 3, 6, 1},
     };
 
     using GaloisField = galois_field::PrimeRing<7>;

@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -35,28 +35,5 @@ struct Factor {
 
   bool operator==(const Factor&) const = default;
 };
-
-// assume polynom is
-//   f(x) = g(x)^p
-// this function returns such g(x) by given f(x)
-template <concepts::Polynom Polynom>
-inline Polynom FieldBaseRoot(const Polynom& polynom) {
-  using Element = typename Polynom::Element;
-  // use auto because in some cases field can be big
-  constexpr auto kFieldBase = Element::FieldBase();
-  constexpr auto kFieldPower = Element::FieldPower();
-
-  std::vector<Element> elements(polynom.Get());
-  for (size_t i = 0; i < elements.size(); i += kFieldBase) {
-    // want to get y that y^p = x
-    // consider p is field base, q = p^k is field size
-    // then y = x^{q/p} = x^p^{k - 1}
-    constexpr auto kPower = utils::BinPow(kFieldBase,
-                                          kFieldPower - 1);
-    elements[i / kFieldBase] = elements[i].Pow(kPower);
-  }
-  elements.resize((elements.size() + kFieldBase - 1) / kFieldBase);
-  return Polynom(std::move(elements));
-}
 
 }  // namespace factorization::solver

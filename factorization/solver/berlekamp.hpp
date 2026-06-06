@@ -9,8 +9,8 @@
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -103,7 +103,8 @@ class Berlekamp {
   // it consists of polynomials g which
   //   g^q = g (mod f)
   // q is field size
-  inline std::vector<Polynom> FindFactorizingBasis(const Polynom& polynom) const {
+  inline std::vector<Polynom> FindFactorizingBasis(
+      const Polynom& polynom) const {
     std::vector<Polynom> result;
     // since powering to q-th power is linear, it can be done with matrix
     // we want not to power but to find specific polynomials
@@ -173,9 +174,10 @@ class Berlekamp {
 
   // returns (A - E)^T
   // where A is equivalent to powering to q-th power
-  inline std::vector<std::vector<Element>> BuildMatrix(const Polynom& factorizing) const {
-    constexpr int kFieldSize = utils::BinPow(Element::FieldBase(),
-                                             Element::FieldPower());
+  inline std::vector<std::vector<Element>> BuildMatrix(
+      const Polynom& factorizing) const {
+    constexpr int kFieldSize =
+        utils::BinPow(Element::FieldBase(), Element::FieldPower());
     size_t n = factorizing.Size() - 1;
     std::vector<std::vector<Element>> result(n, std::vector<Element>(n));
     // At start we want to build matrix A, such that
@@ -219,8 +221,7 @@ class Berlekamp {
   }
 
   inline std::vector<std::vector<Element>> PerformGaussElimination(
-    std::vector<std::vector<Element>> matrix) const {
-
+      std::vector<std::vector<Element>> matrix) const {
     size_t n = matrix.size();
     size_t row = 0;
     for (size_t column = 0; column < n; ++column) {
