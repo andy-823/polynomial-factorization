@@ -139,10 +139,10 @@ int main() {
   std::ofstream out_file;
   out_file.open(path);
   if (!out_file.is_open()) {
-    std::cout << "bad\n";
+    std::cerr << "failed to open output file: " << path << "\n";
     return 0;
   }
-  std::ostream& out = out_file;  // std::cout;
+  std::ostream& out = out_file;
 
   out << "\t";
   for (size_t i = kMin; i <= kMax; i += kStep) {

@@ -196,26 +196,11 @@ class DistinctDegreeFactorizer {
 
   // One-shot
   std::vector<DistinctDegreeFactor<Poly>> Run() {
-    return RunWithObserver([](const char*, bool) {});
-  }
-
-  template <typename Observer>
-  std::vector<DistinctDegreeFactor<Poly>> RunWithObserver(Observer&& observer) {
-    observer("BuildModulus", true);
     auto mod = poly_.BuildModulus(2 * poly_.Size());
-    observer("BuildModulus", false);
-    observer("GenerateBabySteps", true);
     GenerateBabySteps(mod);
-    observer("GenerateBabySteps", false);
-    observer("GenerateGiantSteps", true);
     GenerateGiantSteps(mod);
-    observer("GenerateGiantSteps", false);
-    observer("GiantRefine", true);
     GiantRefine();
-    observer("GiantRefine", false);
-    observer("BabyRefine", true);
     BabyRefine();
-    observer("BabyRefine", false);
     return std::move(result_);
   }
 
@@ -648,26 +633,11 @@ class DistinctDegreeFactorizer {
 
   // One-shot
   std::vector<DistinctDegreeFactor<Poly>> Run() {
-    return RunWithObserver([](const char*, bool) {});
-  }
-
-  template <typename Observer>
-  std::vector<DistinctDegreeFactor<Poly>> RunWithObserver(Observer&& observer) {
-    observer("BuildModulus", true);
     Modulus mod = poly_.BuildModulus(2 * poly_.Size());
-    observer("BuildModulus", false);
-    observer("GenerateBabySteps", true);
     GenerateBabySteps(mod);
-    observer("GenerateBabySteps", false);
-    observer("GenerateGiantSteps", true);
     GenerateGiantSteps(mod);
-    observer("GenerateGiantSteps", false);
-    observer("GiantRefine", true);
     GiantRefine();
-    observer("GiantRefine", false);
-    observer("BabyRefine", true);
     BabyRefine();
-    observer("BabyRefine", false);
     return std::move(result_);
   }
 

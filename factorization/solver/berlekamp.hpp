@@ -32,8 +32,6 @@
 #include "common.hpp"
 #include "square_free_factorization.hpp"
 
-#include <iostream>
-
 namespace factorization::solver {
 
 template <concepts::Polynom Polynom>
