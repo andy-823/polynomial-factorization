@@ -29,21 +29,29 @@
 
 namespace factorization::sff {
 
-// assume polynomial is
-//   f(x) = g(x)^p
-// this function returns such g(x) by given f(x)
+/*! @brief Extracts the p-th root of a polynomial known to be a p-th power.
+ *
+ *  Let p be the field characteristic. If
+ *    f(x) = g(x)^p,
+ *  then only powers x^{pi} can have nonzero coefficients in f.
+ *  That means
+ *    f(x) = f_0 + f_p x^p + f_{2p} x^{2p} + ...
+ *  and
+ *    g(x) = f_0^{1/p} + f_p^{1/p} x + f_{2p}^{1/p} x^2 + ... .
+ *
+ *  @pre polynom is a p-th power.
+ */
 template <concepts::Polynom Polynom>
 inline Polynom FieldBaseRoot(const Polynom& polynom) {
   using Element = typename Polynom::Element;
-  // use auto because in some cases field can be big
+  // Use auto because field sizes may exceed a fixed small integer type.
   constexpr auto kFieldBase = Element::FieldBase();
   constexpr auto kFieldPower = Element::FieldPower();
 
   std::vector<Element> elements(polynom.Get());
   for (size_t i = 0; i < elements.size(); i += kFieldBase) {
-    // want to get y that y^p = x
-    // consider p is field base, q = p^k is field size
-    // then y = x^{q/p} = x^p^{k - 1}
+    // If q = p^k and y^p = x, then
+    //   y = x^{p^{k-1}}.
     constexpr auto kPower = utils::BinPow(kFieldBase, kFieldPower - 1);
     elements[i / kFieldBase] = elements[i].Pow(kPower);
   }
@@ -51,21 +59,31 @@ inline Polynom FieldBaseRoot(const Polynom& polynom) {
   return Polynom(std::move(elements));
 }
 
+/*! @brief Decomposes a polynomial into square-free factors.
+ *
+ *  The result contains pairs (g_i, i), where each g_i is square-free and is the
+ *  product of all irreducible factors that occur in the input with multiplicity
+ *  exactly i.
+ *
+ *  @pre polynom is nonzero.
+ */
 template <concepts::Polynom Polynom>
 constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
     Polynom polynom) {
   std::vector<solver::Factor<Polynom>> result;
-  // f  = g_1 g_2^2 ... g_m^m * h^p
-  // f' = g_2 g_m^{m-1} * h^p * (sum i g'_i * g / g_i)
-  // c = g_2^1 ... g_m^{m-1} h^p
+  // If f = g_1 g_2^2 ... g_m^m h^p, then
+  //   gcd(f, f') = g_2 g_3^2 ... g_m^{m-1} h^p.
   Polynom c = polynom.Gcd(polynom.Derivative());
-  // factors = g_1 ... g_m
+  // factors = g_1 g_2 ... g_m.
   Polynom factors = polynom.Div(c);
   int j = 1;
-  // on each iteration we extract one factor
-  // from square_free_factors
   while (!factors.IsOne()) {
-    // next_factors = g_2 ... g_m
+    // At step j:
+    //   factors = g_j g_{j+1} ...
+    //   c contains g_{j+1} g_{j+2}^2 ... g_m^{m - j} h^p.
+    // So next_factors is
+    //   g_{j+1} ... g_m,
+    // and g_j = factors / next_factors.
     Polynom next_factors = factors.Gcd(c);
     if (factors != next_factors) {
       auto factor = std::move(factors).Div(next_factors);
@@ -75,7 +93,7 @@ constexpr inline std::vector<solver::Factor<Polynom>> SquareFreeFactorize(
     c = std::move(c).Div(factors);
     ++j;
   }
-  // that means polynomial is a p-th power
+  // Only h^p is left.
   if (!c.IsOne()) {
     auto factors = SquareFreeFactorize(FieldBaseRoot(c));
     for (const auto& [factor, power] : factors) {
