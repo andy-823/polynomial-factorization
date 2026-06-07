@@ -488,7 +488,7 @@ class DistinctDegreeFactorizer {
         break;
       }
       // Degree test:
-      //   gcd(H[j] - h[i], F_j) = gcd((H[j] - h[i]) mod F_j, F_j).
+      //   gcd(H[j] - h[i], F_j) = gcd((H[j] - h[i]) (mod F_j), F_j).
       Poly factor = H[j].Sub(h[i]).Rem(mod).Gcd(F_j);
       if (!factor.IsOne()) {
         F_j = std::move(F_j).Div(factor).MakeMonic();
