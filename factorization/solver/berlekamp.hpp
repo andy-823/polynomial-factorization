@@ -34,11 +34,18 @@
 
 namespace factorization::solver {
 
+/*! @brief Berlekamp factorization over a finite field.
+ *
+ *  The public entry point first removes repeated factors with square-free
+ *  factorization. Each square-free component is then split into irreducible
+ *  factors using the Berlekamp subalgebra.
+ */
 template <concepts::Polynom Polynom>
 class Berlekamp {
   using Element = typename Polynom::Element;
 
  public:
+  /*! @brief Factorizes a polynomial into irreducible factors with powers. */
   inline std::vector<Factor<Polynom>> Factorize(Polynom polynom) const {
     std::vector<Factor<Polynom>> result;
     polynom = std::move(polynom).MakeMonic();
@@ -54,22 +61,31 @@ class Berlekamp {
   }
 
  private:
-  // input is monic f(x) = f_1(x) ... f_k(x)
-  // where f_1 ... f_k are irreducible
-  // return vector because of no repeating factors
+  /*! @brief Splits a monic square-free polynomial into irreducible factors.
+   *
+   *  Input has the form
+   *    f = f_1 ... f_k,
+   *  where all f_i are distinct irreducible factors.
+   *
+   *  An element b of the Berlekamp subalgebra is constant modulo every
+   *  f_i. Therefore, for each field element c, the polynomial
+   *    gcd(f, b - c)
+   *  collects exactly those irreducible factors f_i for which
+   *    b = c (mod f_i).
+   *  Applying this splitting to enough basis elements separates all f_i.
+   */
   inline std::vector<Polynom> FactorizeImpl(Polynom polynom) const {
     std::vector<Polynom> basis = FindFactorizingBasis(polynom);
-    // that means the polynomial is irreducible
+    // The basis size equals the number of irreducible factors. If it is one,
+    // then f is irreducible.
     if (basis.size() == 1) {
       return {polynom};
     }
-    // this is supposed to be range
-    // but inside it can be everything - better to get it here
+
     const auto field_elements = Element::AllFieldElements();
+    // factors is the current partition of f. Each nonconstant basis element
+    // refines every part and writes the refined partition to new_factors.
     std::vector<Polynom> factors = {polynom};
-    // put outside the loop to reduce the number of dynamic allocations
-    // most allocations are still done inside polynomial arithmetic,
-    // but if we can use less - why not?
     std::vector<Polynom> new_factors;
     new_factors.reserve(basis.size());
 
@@ -78,66 +94,49 @@ class Berlekamp {
         continue;
       }
       for (const auto& factor : factors) {
+        // For any current divisor of f and any Berlekamp subalgebra element b,
+        //   factor = gcd(factor, b - c_1) * ... * gcd(factor, b - c_q),
+        // where c_1, ..., c_q are all field elements. Thus the loop over c
+        // splits factor without losing any irreducible divisor.
         for (const auto& c : field_elements) {
           Polynom new_factor = factor.Gcd(factorizing.Sub(c));
-          // new factor is nontrivial
           if (!new_factor.IsOne()) {
             new_factors.emplace_back(std::move(new_factor));
           }
-          // it means that we have already found all necessary factors
+          // All irreducible factors have been found.
           if (new_factors.size() == basis.size()) {
             return new_factors;
           }
         }
       }
-      // again: less dynamic allocations
       factors.swap(new_factors);
       new_factors.clear();
     }
     return factors;
   }
 
-  // find basis of Berlekamp subalgebra
-  // it consists of polynomials g which
-  //   g^q = g (mod f)
-  // q is field size
+  /*! @brief Finds a basis of the Berlekamp subalgebra.
+   *
+   *  For an input polynomial f over GF(q), the subalgebra consists of
+   *  polynomials g such that
+   *    g^q = g (mod f).
+   *  Since the map g -> g^q (mod f) is linear over GF(q), the basis is found as
+   *  the kernel of A - I, where A is the matrix of this linear map.
+   */
   inline std::vector<Polynom> FindFactorizingBasis(
       const Polynom& polynom) const {
+    // We want to solve Ax = 0.
     std::vector<Polynom> result;
-    // since powering to q-th power is linear, it can be done with matrix
-    // we do not want to power here, but to find specific polynomials
-    // this matrix has view (A - E)^T
-    //   where yA = y^q
+    // First, build the matrix described above.
     auto matrix = BuildMatrix(polynom);
-    // now we want to find basis of solutions Ax = 0
-    // first we perform Gaussian elimination
+    // Put it into reduced row echelon form.
     matrix = PerformGaussElimination(std::move(matrix));
-    // The idea used here is the following
-    // We have positions of free coefficients
-    // Example:
-    //   0 1 1 0
-    //   0 0 0 1
-    // Positions of free coefficients are [0, 3]
-    // For each row we remember which column is "main"
-    // Here we have main columns:
-    //   row 0: column 1
-    //   row 1: column 3
-    // Then we set each free coefficient to one, the others to zero,
-    // and retrieve the corresponding vector via the matrix.
-    // For example above:
-    //   first free coefficient is one: we get [1, 0, 0, 0]
-    //   second free coefficient is one: we get [0, -1, 1, 0]
-    // Since a free coefficient appears in only one column, we get these
-    // equations.
-    // We have equations containing only 2 values
-    // Example for second
-    //   x_0 = 0, here c_0 = 0
-    //   x_1 + 1 * x_2 = 0
-    //   x_2 = 1, here c_1 = 1
-    //   x_3 + 0 * x_2 = 0
+    // Then extract the kernel basis vectors.
     size_t rank = matrix.size();
     size_t n = polynom.Size() - 1;
+    // Columns that correspond to free variables in the linear system.
     std::vector<size_t> free_coefficient_positions;
+    // data_position[row] is the pivot column in this row.
     std::vector<size_t> data_position;
     free_coefficient_positions.reserve(n - rank);
     data_position.reserve(rank);
@@ -153,15 +152,31 @@ class Berlekamp {
         data_position.emplace_back(column);
         ++column;
       }
-      // free coefficient after the last data position
+      // Columns after the last pivot are also free variables.
       while (column < n) {
         free_coefficient_positions.emplace_back(column);
         ++column;
       }
     }
 
+    // The idea used here is the following. After elimination, we know pivot
+    // columns and free coefficient positions. For example, for matrix
+    //   0 1 1 0
+    //   0 0 0 1
+    // free positions are 0 and 2, while pivot columns are 1 and 3.
+    //
+    // To obtain a basis of solutions to Ax = 0, we process free positions one
+    // by one. For the current free position, set it to one and set all other
+    // free positions to zero; then restore pivot coefficients from the row
+    // equations. In the example above, setting x_2 = 1 gives
+    //   x_1 + x_2 = 0,
+    //   x_3 = 0,
+    // hence the vector
+    //   (0, -1, 1, 0).
     for (const auto& column : free_coefficient_positions) {
       std::vector<Element> current(n, Element::Zero());
+      // Choose the current free coefficient. All other free coefficients remain
+      // zero because current was initialized with zeros.
       current[column] = Element::One();
       for (size_t row = 0; row < rank; ++row) {
         current[data_position[row]] = -matrix[row][column];
@@ -171,29 +186,30 @@ class Berlekamp {
     return result;
   }
 
-  // returns (A - E)^T
-  // where A is equivalent to powering to q-th power
+  /*! @brief Builds (A - I)^T for the map y -> y^q (mod f).
+   *
+   *  Coefficients are treated as row vectors. The matrix A is defined by
+   *    y A = y^q (mod f).
+   *  To solve y(A - I) = 0 with ordinary column-vector Gaussian elimination, the
+   *  function returns (A - I)^T.
+   */
   inline std::vector<std::vector<Element>> BuildMatrix(
       const Polynom& factorizing) const {
     constexpr int kFieldSize =
         utils::BinPow(Element::FieldBase(), Element::FieldPower());
     size_t n = factorizing.Size() - 1;
     std::vector<std::vector<Element>> result(n, std::vector<Element>(n));
-    // At the start we build matrix A such that
-    //   y A = y^q (mod f)
-    // where y is a polynomial
-    // so we want to fill its rows this way
+    // Rows of A are images of basis monomials:
     //   A_0     = x^{0 * q} (mod f)
     //   A_1     = x^{1 * q} (mod f)
     //   ...
     //   A_{n-1} = x^{(n - 1) * q} (mod f)
-    // here q is the field size
     {
-      // base is equal to x^q % f
+      // base = x^q (mod f).
       Polynom base;
       Polynom current(Element::One());
       {
-        // here we construct x in a slightly unusual way
+        // Construct x^q directly and reduce it modulo f.
         std::vector<Element> tmp(kFieldSize + 1);
         tmp.back() = Element::One();  // the only nonzero element is last
         base = Polynom(std::move(tmp)).Rem(factorizing);
@@ -206,10 +222,7 @@ class Berlekamp {
         current = std::move(current).Mul(base).Rem(factorizing);
       }
     }
-    // yA = y
-    // y(A - E) = 0
-    // (A - E)^T y^T = 0
-    // so we want to get (A - E)^T
+    // Convert A to (A - I)^T in place.
     for (size_t i = 0; i < n; ++i) {
       result[i][i] -= Element::One();
       for (size_t j = i + 1; j < n; ++j) {
@@ -219,38 +232,40 @@ class Berlekamp {
     return result;
   }
 
+  /*! @brief Reduces a square matrix to reduced row echelon form.
+   *
+   *  Zero rows are removed from the returned matrix.
+   */
   inline std::vector<std::vector<Element>> PerformGaussElimination(
       std::vector<std::vector<Element>> matrix) const {
     size_t n = matrix.size();
     size_t row = 0;
     for (size_t column = 0; column < n; ++column) {
-      // first we find a row with a nonzero value in this column
+      // Find a pivot row with a nonzero value in the current column.
       size_t next_row = row;
       while (next_row < n && matrix[next_row][column] == Element::Zero()) {
         ++next_row;
       }
       if (next_row != n) {
-        // we have found this row
         std::swap(matrix[next_row], matrix[row]);
-        // we want to set coefficient at matrix[row][column] to one
+        // Normalize the pivot row so that the pivot value becomes one.
         Element coefficient = matrix[row][column].Inverse();
         for (size_t i = column; i < n; ++i) {
           matrix[row][i] *= coefficient;
         }
+        // Remove this column from every other row. This gives reduced row
+        // echelon form, not only an upper triangular form.
         for (size_t other_row = 0; other_row < n; ++other_row) {
           if (row == other_row ||
               matrix[other_row][column] == Element::Zero()) {
             continue;
           }
-          // we want to perform A_i = A_i - A_j * a
-          // where a = matrix[other_row][column]
           coefficient = matrix[other_row][column];
           matrix[other_row][column] = Element::Zero();
           for (size_t i = column + 1; i < n; ++i) {
             matrix[other_row][i] -= matrix[row][i] * coefficient;
           }
         }
-        // now we can move to the next row
         ++row;
       }
     }
