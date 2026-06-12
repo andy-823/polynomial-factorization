@@ -1,11 +1,14 @@
 #include <atomic>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <mutex>
 #include <random>
 #include <string>
+#include <vector>
 
 #include <factorization/galois_field/log_based_field.hpp>
 #include <factorization/galois_field/field_element_wrapper.hpp>

@@ -23,8 +23,10 @@
 #pragma once
 
 #include <cassert>
-#include <vector>
+#include <cstddef>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "task.hpp"
 #include "queue.hpp"

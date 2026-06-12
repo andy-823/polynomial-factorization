@@ -23,7 +23,8 @@
 #pragma once
 
 #include <array>
-#include <climits>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 
 #include <factorization/utils.hpp>

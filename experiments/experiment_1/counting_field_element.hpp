@@ -22,7 +22,11 @@
 
 #pragma once
 
+#include <array>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>

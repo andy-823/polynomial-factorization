@@ -1,8 +1,10 @@
 #include <atomic>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <fstream>
 #include <mutex>
 #include <random>
 #include <string>

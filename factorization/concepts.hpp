@@ -22,7 +22,9 @@
 
 #pragma once
 
+#include <array>
 #include <concepts>
+#include <cstddef>
 #include <ranges>
 #include <utility>
 #include <vector>

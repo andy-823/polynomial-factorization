@@ -23,6 +23,8 @@
 #pragma once
 
 #include <array>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <iterator>
 

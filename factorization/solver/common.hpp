@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <vector>
-
 #include <factorization/concepts.hpp>
 
 namespace factorization::solver {

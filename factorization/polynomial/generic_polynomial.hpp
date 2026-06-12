@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <utility>
 
 #include <factorization/concepts.hpp>

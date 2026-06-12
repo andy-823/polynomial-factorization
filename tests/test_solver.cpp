@@ -1,6 +1,9 @@
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <random>
+#include <utility>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 

@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <ios>
 #include <iostream>
+#include <mutex>
 #include <ostream>
 #include <random>
 #include <vector>
@@ -17,13 +18,11 @@
 #include <factorization/polynomial/ntt_engine.hpp>
 
 #include <factorization/runtime/thread_pool.hpp>
-#include <factorization/runtime/wait_group.hpp>
 
-#include <factorization/solver/common.hpp>
+#include <factorization/concepts.hpp>
 #include <factorization/solver/distinct_degree_factorization.hpp>
 #include <factorization/solver/square_free_factorization.hpp>
 
-#include "factorization/concepts.hpp"
 #include "generator.hpp"
 
 using namespace factorization;         // NOLINT

@@ -26,6 +26,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <utility>
 #include <vector>
 
 #include <factorization/concepts.hpp>

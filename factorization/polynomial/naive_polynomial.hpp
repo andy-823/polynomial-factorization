@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 #include <factorization/concepts.hpp>

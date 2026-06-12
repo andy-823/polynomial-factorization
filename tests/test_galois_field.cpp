@@ -1,3 +1,5 @@
+#include <concepts>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 

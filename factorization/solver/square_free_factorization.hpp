@@ -22,10 +22,14 @@
 
 #pragma once
 
-#include <cstdint>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 #include <factorization/concepts.hpp>
+#include <factorization/utils.hpp>
+
+#include "common.hpp"
 
 namespace factorization::sff {
 

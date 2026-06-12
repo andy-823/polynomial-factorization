@@ -1,7 +1,11 @@
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <utility>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 

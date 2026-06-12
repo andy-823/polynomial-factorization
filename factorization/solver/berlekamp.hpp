@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include <algorithm>
-#include <map>
+#include <cstddef>
+#include <utility>
 #include <vector>
 
 #include <factorization/concepts.hpp>

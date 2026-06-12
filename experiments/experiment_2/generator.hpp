@@ -1,3 +1,9 @@
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <utility>
+#include <vector>
+
 #include <factorization/concepts.hpp>
 #include <factorization/utils.hpp>
 

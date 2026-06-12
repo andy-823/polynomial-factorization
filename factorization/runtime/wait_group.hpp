@@ -22,8 +22,9 @@
 
 #pragma once
 
-#include <mutex>
 #include <condition_variable>
+#include <cstddef>
+#include <mutex>
 
 namespace factorization::runtime {
 
